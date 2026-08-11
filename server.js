@@ -1,13 +1,21 @@
-const express = require("express"),
-      http = require("http"),
-      { Server } = require("socket.io");
+const express = require("express");
+const http = require("http");
+const path = require("path");
+const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 const PORT = process.env.PORT || 3000;
 
-app.use(express.static("public"));
+// Phục vụ tất cả các file tĩnh (HTML, CSS, JS) ngay tại thư mục gốc
+app.use(express.static(__dirname));
+
+// Routing chỉ định rõ từng trang
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
+app.get("/mc", (req, res) => res.sendFile(path.join(__dirname, "mc.html")));
+app.get("/screen", (req, res) => res.sendFile(path.join(__dirname, "screen.html")));
+app.get("/answer.html", (req, res) => res.sendFile(path.join(__dirname, "answer.html")));
 
 const S = {
   started: false,
@@ -71,12 +79,14 @@ function start() {
   return true;
 }
 
-function answer(id, idx, timeout = false) {
+function answer(id, idx, timeout = false, pInfo = null) {
   if (!S.active) return;
   clear();
-  let p = S.players.get(id) || S.active;
+  
+  let p = S.players.get(id) || pInfo || S.active;
   let q = S.questions[S.qi];
   
+  // Kiểm tra đáp án chính xác
   let ok = !timeout && idx !== null && idx !== undefined && Number(idx) === q.answer;
 
   if (ok) {
@@ -134,7 +144,12 @@ io.on("connection", s => {
     S.active = { socketId: s.id, name: p.name, group: p.group };
     S.endsAt = Date.now() + 10000;
     
-    s.emit("answerAccess", { question: { q: q.q, options: q.options }, endsAt: S.endsAt, name: p.name, group: p.group });
+    s.emit("answerAccess", { 
+      question: { q: q.q, options: q.options }, 
+      endsAt: S.endsAt, 
+      name: p.name, 
+      group: p.group 
+    });
     io.emit("buzzWinner", { name: p.name, group: p.group });
     bc();
     
@@ -143,7 +158,8 @@ io.on("connection", s => {
 
   s.on("submitAnswer", d => {
     let index = typeof d === 'object' ? d.index : d;
-    answer(s.id, Number(index), false);
+    let pInfo = typeof d === 'object' ? { name: d.name, group: d.group } : null;
+    answer(s.id, Number(index), false, pInfo);
   });
 
   s.on("mcSaveQuestions", qs => {
@@ -182,9 +198,7 @@ io.on("connection", s => {
   });
 
   s.on("disconnect", () => {
-    if (S.active?.socketId === s.id) {
-      answer(s.id, null, true);
-    }
+    // Không tự động đánh rớt lượt trả lời ngay lập tức để tránh lỗi khi người dùng bị refresh/chuyển hướng trang
     S.players.delete(s.id);
   });
 });
