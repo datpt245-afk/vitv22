@@ -2,137 +2,176 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Bấm Chuông Duck Race</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Bấm Chuông Đua Vịt</title>
   <link rel="stylesheet" href="/style.css">
   <style>
-    .buzz-btn {
-      width: 220px;
-      height: 220px;
-      border-radius: 50%;
-      background: linear-gradient(145deg, #ff4757, #ff6b81);
-      color: white;
-      font-size: 28px;
-      font-weight: bold;
-      border: 8px solid #ffffff30;
-      box-shadow: 0 10px 25px rgba(255,71,87,0.5);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      margin: 20px auto;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    body {
       user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    .buzz-btn {
+      width: 100%;
+      height: 200px;
+      font-size: 32px;
+      font-weight: 900;
+      color: #fff;
+      background: linear-gradient(135deg, #ff4757, #ff6b81);
+      border: 4px solid #ffffff;
+      border-radius: 20px;
+      box-shadow: 0 10px 20px rgba(255, 71, 87, 0.4);
+      cursor: pointer;
+      transition: transform 0.05s, background 0.2s;
+      outline: none;
     }
     .buzz-btn:active {
-      transform: scale(0.92);
-      box-shadow: 0 5px 15px rgba(255,71,87,0.3);
+      transform: scale(0.95);
+      background: #ff2e44;
     }
     .buzz-btn:disabled {
-      background: #718093;
-      box-shadow: none;
-      cursor: not-allowed;
+      background: #747d8c !important;
+      border-color: #a4b0be !important;
+      box-shadow: none !important;
       opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .status-box {
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 15px;
+      min-height: 28px;
+      color: #ffd32a;
     }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>🔔 ĐĂNG KÝ & BẤM CHUÔNG</h1>
-
-    <!-- KHU VỰC ĐĂNG KÝ -->
     <div id="joinForm" class="card">
-      <h2>Nhập thông tin</h2>
-      <input id="pName" type="text" placeholder="Họ và tên..." style="width:100%; padding:12px; margin-bottom:12px; font-size:16px;">
-      <select id="pGroup" style="width:100%; padding:12px; margin-bottom:15px; font-size:16px;">
-        <option value="1">Nhóm 1</option>
-        <option value="2">Nhóm 2</option>
-        <option value="3">Nhóm 3</option>
-        <option value="4">Nhóm 4</option>
-        <option value="5">Nhóm 5</option>
-      </select>
-      <button class="primary" style="width:100%; padding:14px; font-size:18px;" onclick="join()">VÀO GAME</button>
-      <p id="err" style="color: #ff6b6b; margin-top:10px; font-weight:bold;"></p>
+      <h2 style="text-align: center; color: #48dbfb;">🦆 THAM GIA ĐỘI ĐUA</h2>
+      <div style="margin-bottom: 15px;">
+        <label><b>Họ và Tên:</b></label>
+        <input type="text" id="pName" placeholder="Nhập tên của bạn" style="width: 100%; padding: 12px; margin-top: 5px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc;">
+      </div>
+      <div style="margin-bottom: 20px;">
+        <label><b>Chọn Nhóm:</b></label>
+        <select id="pGroup" style="width: 100%; padding: 12px; margin-top: 5px; font-size: 16px; border-radius: 8px;">
+          <option value="1">Nhóm 1</option>
+          <option value="2">Nhóm 2</option>
+          <option value="3">Nhóm 3</option>
+          <option value="4">Nhóm 4</option>
+          <option value="5">Nhóm 5</option>
+        </select>
+      </div>
+      <button onclick="join()" class="btn-success" style="width: 100%; padding: 14px; font-size: 18px; font-weight: bold; background: #2ed573; color: white; border: none; border-radius: 8px;">VÀO PHÒNG GAME</button>
+      <div id="joinError" style="color: #ff4757; text-align: center; margin-top: 10px; font-weight: bold;"></div>
     </div>
 
-    <!-- KHU VỰC CHUÔNG (VÀO NGAY SAU KHU ĐĂNG KÝ) -->
-    <div id="buzzArea" class="card" style="display:none; text-align:center;">
-      <h2 id="userInfo"></h2>
-      <p id="statusMsg" style="font-weight:bold; color:#ffd43b; font-size:18px;">Chờ MC bắt đầu game...</p>
+    <div id="gameArea" class="card" style="display: none;">
+      <h2 id="playerInfo" style="text-align: center; color: #48dbfb; margin-bottom: 15px;"></h2>
       
-      <button id="buzzBtn" class="buzz-btn" onclick="buzz()" disabled>BẤM CHUÔNG</button>
+      <button id="buzzBtn" class="buzz-btn" onclick="sendBuzz()">🔔 BẤM CHUÔNG!</button>
+      
+      <div id="statusMsg" class="status-box">Đang chờ câu hỏi...</div>
     </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const s = io();
+    // Cấu hình Socket tự động kết nối lại cực nhanh khi mất mạng
+    const s = io({
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 500,
+      timeout: 10000
+    });
+
     let me = JSON.parse(sessionStorage.getItem("me") || "null");
 
     if (me) {
-      showBuzzArea();
+      showGameArea();
+      s.emit("joinPlayer", me);
     }
 
     function join() {
-      let name = document.getElementById("pName").value.trim();
-      let group = Number(document.getElementById("pGroup").value);
-      if (!name) return document.getElementById("err").textContent = "Vui lòng nhập tên!";
-      s.emit("joinPlayer", { name, group });
-    }
-
-    s.on("joined", d => {
-      me = d;
+      const name = document.getElementById("pName").value.trim();
+      const group = Number(document.getElementById("pGroup").value);
+      
+      if (!name) {
+        document.getElementById("joinError").textContent = "Vui lòng nhập tên!";
+        return;
+      }
+      
+      me = { name, group };
       sessionStorage.setItem("me", JSON.stringify(me));
-      showBuzzArea();
-    });
-
-    s.on("joinError", e => {
-      document.getElementById("err").textContent = e;
-    });
-
-    function showBuzzArea() {
-      document.getElementById("joinForm").style.display = "none";
-      document.getElementById("buzzArea").style.display = "block";
-      document.getElementById("userInfo").textContent = `👤 ${me.name} (Nhóm ${me.group})`;
+      s.emit("joinPlayer", me);
+      showGameArea();
     }
 
-    function buzz() {
+    function showGameArea() {
+      document.getElementById("joinForm").style.display = "none";
+      document.getElementById("gameArea").style.display = "block";
+      document.getElementById("playerInfo").textContent = `👤 ${me.name} - Nhóm ${me.group}`;
+    }
+
+    function sendBuzz() {
+      const btn = document.getElementById("buzzBtn");
+      btn.disabled = true; // Chống spam click trùng lệnh
       s.emit("buzz");
     }
 
-    s.on("answerAccess", d => {
-      sessionStorage.setItem("answer", JSON.stringify(d));
-      location = "/answer.html";
+    s.on("joined", () => {
+      document.getElementById("statusMsg").textContent = "✅ Đã kết nối! Chờ MC bắt đầu...";
+    });
+
+    s.on("joinError", msg => {
+      alert(msg);
+      sessionStorage.removeItem("me");
+      location.reload();
+    });
+
+    s.on("answerAccess", data => {
+      // Lưu câu hỏi vào session và chuyển sang trang trả lời ngay lập tức
+      sessionStorage.setItem("answer", JSON.stringify(data));
+      location.href = "/answer.html";
+    });
+
+    s.on("buzzWinner", data => {
+      if (me && data.group === me.group) {
+        document.getElementById("statusMsg").textContent = `🔔 ${data.name} (Nhóm bạn) đã bấm chuông!`;
+      } else {
+        document.getElementById("statusMsg").textContent = `🔒 Nhóm ${data.group} (${data.name}) đang trả lời...`;
+      }
+      document.getElementById("buzzBtn").disabled = true;
     });
 
     s.on("state", st => {
-      if (!me) return;
       const btn = document.getElementById("buzzBtn");
       const msg = document.getElementById("statusMsg");
 
-      let isLocked = st.lockedGroups && st.lockedGroups.includes(me.group);
-
       if (!st.started) {
         btn.disabled = true;
-        msg.textContent = "⏳ Chờ MC bắt đầu game...";
-      } else if (st.activeResponder) {
+        msg.textContent = st.finished ? "🏁 Game đã kết thúc!" : "⏳ Đang chờ MC bắt đầu...";
+        return;
+      }
+
+      // Kiểm tra nhóm có bị khóa lượt câu này không
+      const isLocked = st.lockedGroups && st.lockedGroups.includes(me.group);
+
+      if (st.activeResponder) {
         btn.disabled = true;
-        if (st.activeResponder.group === me.group) {
-          msg.textContent = "🔔 Nhóm bạn đang giành quyền trả lời!";
-        } else {
-          msg.textContent = `📢 Nhóm ${st.activeResponder.group} (${st.activeResponder.name}) đang trả lời...`;
-        }
       } else if (isLocked) {
         btn.disabled = true;
-        msg.textContent = "❌ Nhóm bạn đã bị khóa lượt câu này!";
+        msg.textContent = "❌ Nhóm bạn đã trả lời sai câu này (Đã bị khóa lượt).";
       } else {
         btn.disabled = false;
-        msg.textContent = "⚡ SẴN SÀNG BẤM CHUÔNG!";
+        msg.textContent = "⚡ CHUÔNG ĐÃ MỞ! Nhanh tay bấm chuông!";
       }
     });
 
     s.on("gameReset", () => {
-      sessionStorage.removeItem("me");
+      sessionStorage.clear();
       location.reload();
     });
   </script>
