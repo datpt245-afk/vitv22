@@ -3,52 +3,86 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Trả lời</title>
+  <title>Trả Lời Câu Hỏi</title>
   <link rel="stylesheet" href="/style.css">
+  <style>
+    .timer-box {
+      font-size: 32px;
+      font-weight: bold;
+      color: #ff4757;
+      text-align: center;
+      margin: 15px 0;
+    }
+    .option-btn {
+      width: 100%;
+      padding: 16px;
+      margin-bottom: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 10px;
+      color: white;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s;
+    }
+    .option-btn:active {
+      background: #2ed573;
+      transform: scale(0.98);
+    }
+  </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <h1 id="q"></h1>
-      <div class="timer" id="t">10</div>
-      <div id="a" class="answers"></div>
-      <h2 id="m"></h2>
+      <h2 id="userInfo" style="text-align: center; color: #48dbfb;"></h2>
+      <div id="timer" class="timer-box">10s</div>
+      <h3 id="qText" style="font-size: 22px; text-align: center; margin-bottom: 20px;"></h3>
+      
+      <div id="opts"></div>
     </div>
   </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const s = io();
-    const d = JSON.parse(sessionStorage.getItem("answer") || "null");
-    let sent = false;
+    const data = JSON.parse(sessionStorage.getItem("answer") || "null");
+    const me = JSON.parse(sessionStorage.getItem("me") || "null");
 
-    if (d && d.question) {
-      q.textContent = d.question.q;
-      a.innerHTML = d.question.options.map((x, i) => 
-        `<button class="answerBtn" onclick="send(${i})">${"ABCD"[i]}. ${x}</button>`
-      ).join("");
-
-      let timerInt = setInterval(() => {
-        let n = Math.max(0, Math.ceil((d.endsAt - Date.now()) / 1000));
-        t.textContent = n;
-        if (n <= 0) {
-          clearInterval(timerInt);
-          document.querySelectorAll(".answerBtn").forEach(x => x.disabled = true);
-        }
-      }, 100);
+    if (!data || !me) {
+      location = "/";
     } else {
-      m.textContent = "Không có lượt trả lời.";
+      document.getElementById("userInfo").textContent = `🔔 ${me.name} (Nhóm ${me.group})`;
+      document.getElementById("qText").textContent = data.question.q;
+
+      const optsEl = document.getElementById("opts");
+      optsEl.innerHTML = data.question.options.map((o, idx) => `
+        <button class="option-btn" onclick="submit(${idx})">
+          <b>${"ABCD"[idx]}.</b> ${o}
+        </button>
+      `).join("");
+
+      // Đếm ngược thời gian
+      let interval = setInterval(() => {
+        let left = Math.max(0, Math.ceil((data.endsAt - Date.now()) / 1000));
+        document.getElementById("timer").textContent = left + "s";
+        if (left <= 0) {
+          clearInterval(interval);
+          location = "/";
+        }
+      }, 200);
     }
 
-    function send(i) {
-      if (sent) return;
-      sent = true;
-      document.querySelectorAll(".answerBtn").forEach(x => x.disabled = true);
-      s.emit("submitAnswer", { index: i, name: d?.name, group: d?.group });
+    function submit(idx) {
+      s.emit("submitAnswer", { index: idx, name: me.name, group: me.group });
+      sessionStorage.removeItem("answer");
+      location = "/";
     }
 
-    s.on("answerResult", r => {
-      m.textContent = r.correct ? "🎉 ĐÚNG!" : "❌ SAI / HẾT GIỜ";
-      setTimeout(() => location = "/", 1200);
+    s.on("answerResult", () => {
+      sessionStorage.removeItem("answer");
+      location = "/";
     });
   </script>
 </body>
