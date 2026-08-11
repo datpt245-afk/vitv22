@@ -1,270 +1,73 @@
-<!doctype html>
-<html lang="vi">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>MC Control</title>
-  <link rel="stylesheet" href="/style.css">
-  <style>
-    .score-container {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      margin-top: 20px;
-    }
-    .score-box {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 12px;
-      padding: 16px;
-    }
-    .score-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(255, 255, 255, 0.08);
-      padding: 8px 12px;
-      border-radius: 8px;
-      margin-bottom: 8px;
-    }
-    .score-number {
-      font-weight: bold;
-      color: #ffd43b;
-      font-size: 18px;
-    }
-    .score-input {
-      width: 60px;
-      padding: 4px 8px;
-      border-radius: 4px;
-      border: 1px solid #555;
-      background: #222;
-      color: #fff;
-      text-align: center;
-      font-size: 14px;
-      margin-right: 6px;
-    }
-    .btn-sm {
-      padding: 4px 10px;
-      font-size: 13px;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .global-setting-card {
-      background: rgba(255, 212, 59, 0.1);
-      border: 1px solid #ffd43b;
-      padding: 16px;
-      border-radius: 12px;
-      margin-bottom: 20px;
-    }
-    .global-setting-grid {
-      display: flex;
-      gap: 20px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-top: 10px;
-    }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <h1>🎤 DUCK RACE — QUẢN TRÒ (MC)</h1>
-    
-    <div class="card">
-      <button class="primary" style="font-size: 20px; padding: 15px 30px;" onclick="start()">▶️ BẮT ĐẦU GAME</button> 
-      <button class="danger" style="font-size: 20px; padding: 15px 30px;" onclick="resetGame()">🔄 RESET</button>
-      <p id="msg" style="font-weight: bold; color: #ffd43b; margin-top: 10px;"></p>
-    </div>
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Duck Race - MC</title><link rel="stylesheet" href="/style.css"></head>
+<body><div class="wrap">
+<div class="top"><div><h1>🎤 DUCK RACE — BẢNG ĐIỀU KHIỂN MC</h1><div class="sub">5 nhóm • chuông theo thành viên • điểm nhóm + điểm cá nhân • câu hỏi tuần tự</div></div>
+<div class="row"><button class="btn dark" onclick="resetBuzz()">🔄 Reset chuông</button><button class="btn bad" onclick="resetGame()">♻️ Reset toàn bộ</button></div></div>
 
-    <!-- CÀI ĐẶT MỨC ĐIỂM CHUNG CHO TOÀN BỘ CÂU HỎI -->
-    <div class="global-setting-card">
-      <h2 style="margin: 0; color: #ffd43b;">⚙️ MỨC ĐIỂM THƯỞNG CHUNG (ÁP DỤNG CHO TẤT CẢ CÂU HỎI)</h2>
-      <div class="global-setting-grid">
-        <div>
-          <label style="font-weight: bold;">🏆 Điểm thưởng Nhóm mỗi câu: </label>
-          <input type="number" id="globalGroupPoints" value="10" style="width: 80px; padding: 6px; font-size: 16px; font-weight: bold; text-align: center;">
-        </div>
-        <div>
-          <label style="font-weight: bold;">👤 Điểm thưởng Cá nhân mỗi câu: </label>
-          <input type="number" id="globalIndPoints" value="10" style="width: 80px; padding: 6px; font-size: 16px; font-weight: bold; text-align: center;">
-        </div>
-      </div>
-    </div>
+<div class="grid">
+<section>
+<div class="card"><div id="winner" class="winner">🔔 Đang chờ MC mở câu hỏi...</div>
+<div id="qbox" class="qbox">Chưa có câu hỏi</div><div id="opts" class="options"></div>
+<div class="row" style="margin-top:14px"><button id="nextBtn" class="btn primary" onclick="nextQuestion()">▶️ MỞ CÂU ĐẦU TIÊN</button><button class="btn ok" onclick="correct()">✅ ĐÚNG</button><button class="btn bad" onclick="wrong()">❌ SAI / CHO CƯỚP</button></div>
+<div id="status" class="status">Thêm câu hỏi bên dưới, sau đó dùng nút MỞ CÂU / CÂU TIẾP THEO.</div></div>
 
-    <!-- DANH SÁCH THÀNH VIÊN ĐÃ VÀO CHUÔNG -->
-    <div class="card">
-      <h2>👥 THÀNH VIÊN ĐÃ VÀO CHUÔNG (<span id="playerCount">0</span> người)</h2>
-      <div id="playerList" style="display: flex; flex-wrap: wrap; gap: 10px;">
-        <p style="color: #aaa;">Đang chờ mọi người nhập tên...</p>
-      </div>
-    </div>
+<div class="card"><h2>🦆 Đường đua</h2><div id="race"></div></div>
+</section>
 
-    <!-- KHU VỰC ĐIỂM SỐ -->
-    <div class="score-container">
-      <div class="score-box">
-        <h2 style="color: #48dbfb; margin-top: 0;">🏆 ĐIỂM TẬP THỂ (NHÓM)</h2>
-        <div id="teamScores">
-          <p style="color: #aaa;">Chưa có dữ liệu điểm nhóm...</p>
-        </div>
-      </div>
+<aside>
+<div class="card"><h2>⚙️ Điểm</h2><div class="grid2">
+<div><label>Điểm nhóm / câu đúng</label><input id="teamStep" type="number" value="2" min="1"></div>
+<div><label>Điểm cá nhân / câu đúng</label><input id="personalPoint" type="number" value="1" min="1"></div></div><button class="btn purple" style="margin-top:10px" onclick="saveScore()">Lưu cách tính điểm</button></div>
 
-      <div class="score-box">
-        <h2 style="color: #2ed573; margin-top: 0;">👤 ĐIỂM CÁ NHÂN</h2>
-        <div id="indScores" style="max-height: 380px; overflow-y: auto;">
-          <p style="color: #aaa;">Chưa có cá nhân tham gia...</p>
-        </div>
-      </div>
-    </div>
+<div class="card"><h2>🏆 Tổng điểm nhóm</h2><table><thead><tr><th>Nhóm</th><th>Đúng</th><th>Điểm</th></tr></thead><tbody id="teams"></tbody></table></div>
+<div class="card"><h2>👑 Bảng điểm cá nhân</h2><table><thead><tr><th>#</th><th>Thành viên</th><th>Nhóm</th><th>Đúng</th><th>Điểm</th></tr></thead><tbody id="people"></tbody></table></div>
+</aside></div>
 
-    <!-- SOẠN CÂU HỎI -->
-    <div class="card" style="margin-top: 20px;">
-      <h2>📝 DANH SÁCH CÂU HỎI</h2>
-      <div id="qs"></div>
-      <button class="primary" onclick="add()">➕ THÊM CÂU HỎI</button> 
-      <button onclick="save()">💾 LƯU CÂU HỎI</button>
-    </div>
-  </div>
+<div class="grid">
+<section class="card"><h2>📝 Tạo câu hỏi</h2>
+<input id="newQ" placeholder="Nhập câu hỏi...">
+<div class="grid2" style="margin-top:9px"><input id="a0" placeholder="A. Đáp án"><input id="a1" placeholder="B. Đáp án"><input id="a2" placeholder="C. Đáp án"><input id="a3" placeholder="D. Đáp án"></div>
+<div class="row" style="margin-top:9px"><label>Đáp án đúng:</label><select id="correctAns"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select><button class="btn primary" onclick="addQuestion()">➕ Thêm câu</button></div>
+<p class="muted">Nhập toàn bộ câu hỏi trước khi bắt đầu. Khi chơi, MC chỉ cần bấm MỞ CÂU ĐẦU TIÊN rồi CÂU TIẾP THEO.</p></section>
+<section class="card"><h2>📚 Ngân hàng câu hỏi</h2><div id="bank"></div></section></div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const s = io();
-    let qs = [];
+<div class="card"><h2>🔗 Link chuông 5 nhóm</h2><div id="links"></div></div>
+</div>
+<script src="/socket.io/socket.io.js"></script><script>
+const s=io();let state=null;let lastRace=[];
+const qs=id=>document.getElementById(id);
+function render(x){
+ state=x;
+ qs("teams").innerHTML=Object.values(x.teams).map(t=>`<tr><td>${t.name}</td><td>${t.correct}</td><td><b>${t.score}</b></td></tr>`).join("");
+ let people=[];Object.entries(x.teams).forEach(([g,t])=>Object.entries(t.members).forEach(([name,v])=>people.push({name,g,...v})));people.sort((a,b)=>b.score-a.score||b.correct-a.correct);
+ qs("people").innerHTML=people.map((p,i)=>`<tr><td>${i+1}</td><td>${p.name}</td><td>Nhóm ${p.g}</td><td>${p.correct}</td><td><b>${p.score}</b></td></tr>`).join("");
+ qs("bank").innerHTML=x.questions.length?x.questions.map((q,i)=>`<div class="card" style="margin:7px 0;padding:12px"><b>${i+1}. ${q.q}</b><div class="muted">Đáp án đã cài: ${"ABCD"[q.answer]}</div><button class="btn bad" style="margin-top:8px" onclick="deleteQ(${i})">Xóa</button></div>`).join(""):"<p class='muted'>Chưa có câu hỏi.</p>";
+ const names=["🟥","🟦","🟩","🟨","🟪"],colors=["red","blue","green","yellow","purple"];
+ qs("race").innerHTML=Object.values(x.teams).map((t,i)=>{const pct=Math.min(100,Number(t.score)||0);return `<div class="lane"><div class="n">${names[i]} ${t.name} — ${t.score} điểm</div><div class="line"></div><div class="swimDuck ${colors[i]}" id="duck${i}" style="left:calc(${pct}% - 30px)"><span class="body">🦆</span><span class="wave">〰️〰️</span><span class="splash">💦</span></div><div class="finish">🏁</div></div>`}).join("");
+ qs("links").innerHTML=[1,2,3,4,5].map(i=>`<p>🔔 <b>Nhóm ${i}</b>: <code>${location.origin}/?group=${i}</code></p>`).join("");
+ if(x.currentQuestion>=0 && x.questions[x.currentQuestion]) showQuestion(x.questions[x.currentQuestion]);
+ else {qs("qbox").textContent="Chưa mở câu hỏi";qs("opts").innerHTML="";}
+ updateNextButton();
+}
 
-    function add() {
-      qs.push({ q: "", options: ["", "", "", ""], answer: 0 });
-      render();
-    }
+// Màn hình MC sẽ LUÔN LUÔN tô sáng đáp án đúng (có màu xanh và dấu ✓)
+function showQuestion(q){
+ qs("qbox").textContent=q.q;
+ qs("opts").innerHTML=q.options.map((o,i)=>`<div class="opt ${i===q.answer?'correct':''}">${"ABCD"[i]}. ${o}${i===q.answer?' ✓':''}</div>`).join("");
+}
 
-    function render() {
-      const qsEl = document.getElementById("qs");
-      qsEl.innerHTML = qs.map((q, i) => `
-        <div class="card" style="background: rgba(255,255,255,0.05);">
-          <h3>Câu ${i + 1}</h3>
-          <input class="qq" data-i="${i}" value="${q.q.replaceAll('"', '&quot;')}" placeholder="Nội dung câu hỏi" style="width:100%;padding:12px;margin-bottom:8px;">
-          <div class="grid2">
-            ${q.options.map((o, j) => `
-              <input class="oo" data-i="${i}" data-j="${j}" value="${o.replaceAll('"', '&quot;')}" placeholder="Đáp án ${"ABCD"[j]}" style="padding:12px;">
-            `).join("")}
-          </div>
-          
-          <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
-            <div>
-              Đáp án đúng: 
-              <select class="aa" data-i="${i}">
-                ${[0,1,2,3].map(j => `<option value="${j}" ${q.answer === j ? "selected" : ""}>${"ABCD"[j]}</option>`).join("")}
-              </select>
-            </div>
-            <button class="danger" onclick="del(${i})">Xóa câu này</button>
-          </div>
-        </div>
-      `).join("");
-    }
-
-    function sync() {
-      document.querySelectorAll(".qq").forEach(e => qs[e.dataset.i].q = e.value);
-      document.querySelectorAll(".oo").forEach(e => qs[e.dataset.i].options[e.dataset.j] = e.value);
-      document.querySelectorAll(".aa").forEach(e => qs[e.dataset.i].answer = +e.value);
-    }
-
-    function save() {
-      sync();
-      const gPts = Number(document.getElementById("globalGroupPoints").value) || 10;
-      const iPts = Number(document.getElementById("globalIndPoints").value) || 10;
-      
-      // Gửi cả danh sách câu hỏi lẫn mức điểm chung lên server
-      s.emit("mcSaveQuestions", {
-        questions: qs,
-        globalGroupPoints: gPts,
-        globalIndPoints: iPts
-      });
-    }
-
-    function start() {
-      save();
-      setTimeout(() => s.emit("mcStart"), 200);
-    }
-
-    function del(i) {
-      qs.splice(i, 1);
-      render();
-    }
-
-    function resetGame() {
-      if (confirm("Reset game và xóa toàn bộ dữ liệu?")) s.emit("mcReset");
-    }
-
-    function adjustTeamScore(teamId) {
-      const inputEl = document.getElementById(`team-pts-${teamId}`);
-      const val = Number(inputEl.value) || 0;
-      if (val === 0) return;
-      s.emit("mcAdjustTeamScore", { teamId: teamId, points: val });
-      inputEl.value = "";
-    }
-
-    function adjustIndScore(key) {
-      const safeKey = key.replace(/[^a-zA-Z0-9]/g, "");
-      const inputEl = document.getElementById(`ind-pts-${safeKey}`);
-      const val = Number(inputEl.value) || 0;
-      if (val === 0) return;
-      s.emit("mcAdjustIndScore", { playerKey: key, points: val });
-      inputEl.value = "";
-    }
-
-    s.on("mcQuestionsSaved", d => msg.textContent = "✅ Đã lưu " + d.count + " câu hỏi (Điểm nhóm: " + d.groupPts + ", Điểm cá nhân: " + d.indPts + ")");
-    s.on("mcError", e => msg.textContent = "⚠️ " + e);
-
-    s.on("state", x => {
-      if (x.teams) {
-        document.getElementById("teamScores").innerHTML = x.teams.map(t => `
-          <div class="score-item">
-            <div><b>${t.name}</b>: <span class="score-number">${t.score}</span> đ</div>
-            <div>
-              <input type="number" id="team-pts-${t.id}" class="score-input" placeholder="±Đ">
-              <button class="primary btn-sm" onclick="adjustTeamScore(${t.id})">Sửa</button>
-            </div>
-          </div>
-        `).join("");
-      }
-
-      if (x.playerList) {
-        document.getElementById("playerCount").textContent = x.playerList.length;
-        if (x.playerList.length === 0) {
-          document.getElementById("playerList").innerHTML = `<p style="color: #aaa;">Chưa có ai vào chuông...</p>`;
-        } else {
-          document.getElementById("playerList").innerHTML = x.playerList.map(p => `
-            <div style="background: #ffffff20; padding: 8px 14px; border-radius: 20px; font-weight: bold;">
-              👤 ${p.name} <span style="color: #20c779;">(Nhóm ${p.group})</span>
-            </div>
-          `).join("");
-        }
-
-        let indMap = new Map();
-        if (x.individuals) {
-          x.individuals.forEach(i => indMap.set(i.group + ":" + i.name, i.score));
-        }
-
-        if (x.playerList.length > 0) {
-          let indHTML = "";
-          x.playerList.forEach(p => {
-            let key = p.group + ":" + p.name;
-            let safeKey = key.replace(/[^a-zA-Z0-9]/g, "");
-            let score = indMap.get(key) || 0;
-
-            indHTML += `
-              <div class="score-item">
-                <div><b>${p.name}</b> <small style="color:#aaa;">(N${p.group})</small>: <span class="score-number">${score}</span> đ</div>
-                <div>
-                  <input type="number" id="ind-pts-${safeKey}" class="score-input" placeholder="±Đ">
-                  <button class="primary btn-sm" onclick="adjustIndScore('${key}')">Sửa</button>
-                </div>
-              </div>
-            `;
-          });
-          document.getElementById("indScores").innerHTML = indHTML;
-        }
-      }
-    });
-
-    add();
-  </script>
-</body>
-</html>
+function updateNextButton(){if(!state)return;const n=state.currentQuestion+1;if(!state.questions.length) qs("nextBtn").textContent="▶️ MỞ CÂU ĐẦU TIÊN";else if(n>=state.questions.length) qs("nextBtn").textContent="🏁 ĐÃ HẾT CÂU HỎI";else qs("nextBtn").textContent=state.currentQuestion<0?"▶️ MỞ CÂU ĐẦU TIÊN":`▶️ CÂU TIẾP THEO (${n+1})`;qs("nextBtn").disabled=!state.questions.length||n>=state.questions.length;}
+function nextQuestion(){if(!state||!state.questions.length)return alert("Hãy nhập câu hỏi trước.");const n=state.currentQuestion+1;if(n>=state.questions.length)return; s.emit("nextQuestion")}
+function addQuestion(){let q=qs("newQ").value.trim(),opts=[0,1,2,3].map(i=>qs("a"+i).value.trim()),ans=Number(qs("correctAns").value);if(!q||opts.some(x=>!x))return alert("Điền đủ câu hỏi và 4 đáp án.");const arr=(state?.questions||[]).concat([{q,options:opts,answer:ans}]);s.emit("saveQuestions",arr);["newQ","a0","a1","a2","a3"].forEach(id=>qs(id).value="");}
+function deleteQ(i){if(!confirm("Xóa câu này?"))return;const arr=state.questions.slice();arr.splice(i,1);s.emit("saveQuestions",arr)}
+function correct(){s.emit("correct")}
+function wrong(){s.emit("wrong")}
+function resetBuzz(){s.emit("resetBuzz")}
+function resetGame(){if(confirm("Xóa toàn bộ điểm và thành viên?"))s.emit("resetGame")}
+function saveScore(){s.emit("setScoring",{teamStep:Number(qs("teamStep").value),personalPoint:Number(qs("personalPoint").value)})}
+s.on("state",render);
+s.on("buzzed",x=>{qs("winner").textContent=`🚨 ${x.name} — NHÓM ${x.group} GIÀNH QUYỀN!`;qs("status").textContent="Hãy kiểm tra câu trả lời rồi bấm ĐÚNG hoặc SAI."});
+s.on("questionOpened",x=>{qs("winner").textContent="🔔 Câu hỏi đang mở — chờ chuông!";qs("status").textContent="Các nhóm có thể bấm chuông.";showQuestion(x.question)});
+s.on("result",x=>{qs("winner").textContent=`✅ ${x.name} — Nhóm ${x.group} đúng! +${x.teamStep} nhóm / +${x.personalPoint} cá nhân`;qs("status").textContent="Đáp án đúng đã được bật sáng. Bấm CÂU TIẾP THEO để sang câu mới."});
+s.on("wrong",x=>{qs("winner").textContent=`❌ ${x.name} sai — các nhóm còn lại được CƯỚP!`;qs("status").textContent="Chờ nhóm khác bấm chuông."});
+s.on("resetBuzz",()=>qs("winner").textContent="🔔 Chuông đã reset — tiếp tục giành quyền!");
+</script></body></html>

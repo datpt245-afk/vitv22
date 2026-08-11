@@ -1,329 +1,1303 @@
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Màn Chiếu - Đua Vịt </title>
-  <link rel="stylesheet" href="/style.css">
-  <style>
-    /* BẢNG CÂU HỎI */
-    .question-box {
-      background: rgba(15, 23, 42, 0.85);
-      padding: 20px;
-      border-radius: 16px;
-      border: 2px solid rgba(255, 255, 255, 0.15);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-      margin-bottom: 15px;
-      text-align: center;
-    }
-    .options-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-top: 15px;
-    }
-    .option-card {
-      background: rgba(255, 255, 255, 0.08);
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      padding: 14px;
-      border-radius: 12px;
-      font-size: 19px;
-      font-weight: bold;
-      text-align: left;
-      transition: all 0.3s ease;
-    }
-    .option-card.correct-highlight {
-      background: #2ed573 !important;
-      color: #ffffff !important;
-      border-color: #7bed9f !important;
-      box-shadow: 0 0 25px #2ed573;
-      transform: scale(1.02);
-    }
-    .status-banner {
-      font-size: 22px;
-      font-weight: 800;
-      text-align: center;
-      margin: 10px 0;
-      min-height: 32px;
-      color: #ffd43b;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.6);
-    }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 
-    /* BỜ SÔNG & DÒNG SÔNG ANIME */
-    .river-bank {
-      background: linear-gradient(180deg, #10b981 0%, #059669 100%);
-      border-radius: 20px;
-      padding: 12px;
-      box-shadow: inset 0 4px 10px rgba(0,0,0,0.3), 0 10px 25px rgba(0,0,0,0.5);
-      border: 3px solid #34d399;
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .river-container {
-      background: linear-gradient(180deg, #0284c7 0%, #0369a1 50%, #075985 100%);
-      border-radius: 12px;
-      position: relative;
-      padding: 10px 0;
-      box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
-      overflow: hidden;
-    }
+<title>Duck Race — Màn hình trình chiếu</title>
 
-    /* HIỆU ỨNG SÓNG NƯỚC CHẠY GIAO THOA ANIME */
-    .river-container::before {
-      content: "";
-      position: absolute;
-      top: 0; left: -100%; width: 300%; height: 100%;
-      background: repeating-linear-gradient(
-        45deg,
-        rgba(255, 255, 255, 0.05) 0px,
-        rgba(255, 255, 255, 0.05) 20px,
-        transparent 20px,
-        transparent 40px
-      );
-      animation: riverFlow 8s linear infinite;
-      pointer-events: none;
-    }
+<link rel="stylesheet" href="/style.css">
 
-    @keyframes riverFlow {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(33.33%); }
-    }
+<style>
 
-    /* LÀN NƯỚC SÔNG */
-    .river-lane {
-      position: relative;
-      height: 65px;
-      border-bottom: 2px dashed rgba(255, 255, 255, 0.25);
-      display: flex;
-      align-items: center;
-    }
-    .river-lane:last-child {
-      border-bottom: none;
-    }
+/* =====================================================
+   GENERAL
+===================================================== */
 
-    /* TÊN NHÓM CẮM BỔNG BÊN BỜ SÔNG */
-    .lane-badge {
-      position: absolute;
-      left: 12px;
-      font-weight: 900;
-      font-size: 14px;
-      color: #ffffff;
-      background: linear-gradient(135deg, #ff4757, #ff6b81);
-      padding: 6px 12px;
-      border-radius: 20px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-      z-index: 5;
-      border: 2px solid #ffffff;
-      width: 85px;
-      text-align: center;
-      white-space: nowrap;
-    }
+body{
+  overflow:hidden;
+}
 
-    /* VẠCH ĐÍCH CỜ CARO ANIME */
-    .finish-line {
-      position: absolute;
-      right: 35px;
-      top: 0;
-      bottom: 0;
-      width: 16px;
-      background: repeating-linear-gradient(
-        0deg,
-        #ffffff,
-        #ffffff 12px,
-        #000000 12px,
-        #000000 24px
-      );
-      z-index: 2;
-      box-shadow: 0 0 10px rgba(255,255,255,0.8);
-      border-left: 2px solid #ffd700;
-      border-right: 2px solid #ffd700;
-    }
+.screen{
+  max-width:1500px;
+  margin:auto;
+  padding:24px;
+}
 
-    /* CON VỊT ANIME 2D & CHUYỂN ĐỘNG NỔI */
-    .duck-wrapper {
-      position: absolute;
-      left: 110px; /* Vị trí xuất phát */
-      transition: left 1s cubic-bezier(0.34, 1.56, 0.64, 1);
-      z-index: 4;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+.head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
 
-    /* HIỆU ỨNG VỊT NHẤP NHÔ BƠI TRÊN NƯỚC */
-    .anime-duck-avatar {
-      animation: duckBob 1.6s ease-in-out infinite alternate;
-      filter: drop-shadow(0 6px 4px rgba(0,0,0,0.3));
-    }
+.bigq{
+  font-size:42px;
+  font-weight:900;
+  line-height:1.2;
+  margin:20px 0;
+}
 
-    @keyframes duckBob {
-      0% { transform: translateY(-2px) rotate(-3deg); }
-      100% { transform: translateY(4px) rotate(4deg); }
-    }
+.bigopts{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+}
 
-    /* BẢNG ĐIỂM TRÊN ĐẦU VỊT */
-    .duck-score-tag {
-      font-size: 13px;
-      font-weight: 900;
-      background: #ffd32a;
-      color: #1e272e;
-      padding: 3px 8px;
-      border-radius: 12px;
-      border: 2px solid #ffffff;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.3);
-    }
-  </style>
+.bigopt{
+  font-size:28px;
+  font-weight:800;
+  padding:22px;
+  border-radius:18px;
+  background:#ffffff10;
+  border:2px solid #ffffff20;
+  transition:.3s;
+}
+
+/* ĐÁP ÁN ĐÚNG SAU KHI MC BẤM ĐÚNG */
+
+.bigopt.correct{
+  background:#1fbf5b !important;
+  color:#fff;
+  border-color:#fff;
+  box-shadow:
+    0 0 24px #1fbf5b,
+    0 0 60px #1fbf5b55;
+  transform:scale(1.04);
+  animation:correctAnswer .6s ease-out;
+}
+
+@keyframes correctAnswer{
+  0%{
+    transform:scale(.95);
+    opacity:.5;
+  }
+
+  60%{
+    transform:scale(1.08);
+  }
+
+  100%{
+    transform:scale(1.04);
+    opacity:1;
+  }
+}
+
+.alert{
+  font-size:30px;
+  font-weight:900;
+  text-align:center;
+  padding:18px;
+  border-radius:18px;
+  background:#0004;
+  margin:18px 0;
+}
+
+.score{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:10px;
+}
+
+.score .s{
+  padding:14px;
+  border-radius:15px;
+  background:#ffffff10;
+  text-align:center;
+  font-weight:900;
+}
+
+.small{
+  font-size:15px;
+  opacity:.7;
+}
+
+
+/* =====================================================
+   🏁 2D DUCK RACE
+===================================================== */
+
+#race{
+  position:relative;
+
+  width:100%;
+
+  min-height:430px;
+
+  overflow:hidden;
+
+  border-radius:30px;
+
+  margin-top:15px;
+
+  background:
+    linear-gradient(
+      180deg,
+      #55dff5 0%,
+      #27bde2 45%,
+      #078fc3 100%
+    );
+
+  box-shadow:
+    inset 0 10px 40px #ffffff35,
+    inset 0 -20px 50px #00547c55,
+    0 15px 40px #0004;
+}
+
+
+/* ánh sáng trên mặt nước */
+
+#race::before{
+  content:"";
+
+  position:absolute;
+
+  inset:0;
+
+  background:
+    radial-gradient(
+      ellipse at 20% 10%,
+      #ffffff55,
+      transparent 30%
+    ),
+    radial-gradient(
+      ellipse at 80% 30%,
+      #ffffff22,
+      transparent 35%
+    );
+
+  pointer-events:none;
+}
+
+
+/* =====================================================
+   WAVES
+===================================================== */
+
+.waveLayer{
+  position:absolute;
+
+  left:-10%;
+  width:120%;
+
+  height:80px;
+
+  pointer-events:none;
+
+  opacity:.35;
+
+  background:
+    repeating-radial-gradient(
+      ellipse at center,
+      transparent 0px,
+      transparent 12px,
+      #ffffff55 13px,
+      transparent 16px
+    );
+
+  animation:waterMove 5s linear infinite;
+}
+
+.wave1{
+  top:10px;
+}
+
+.wave2{
+  top:160px;
+  opacity:.22;
+  animation-duration:7s;
+  animation-direction:reverse;
+}
+
+.wave3{
+  bottom:20px;
+  opacity:.18;
+  animation-duration:6s;
+}
+
+@keyframes waterMove{
+
+  from{
+    transform:translateX(-80px);
+  }
+
+  to{
+    transform:translateX(80px);
+  }
+
+}
+
+
+/* =====================================================
+   LANES
+===================================================== */
+
+.raceLane{
+
+  position:relative;
+
+  height:78px;
+
+  margin:5px 35px;
+
+  border-bottom:
+    2px dashed #ffffff45;
+}
+
+
+/* tên nhóm */
+
+.laneName{
+
+  position:absolute;
+
+  left:8px;
+  top:7px;
+
+  z-index:20;
+
+  padding:5px 12px;
+
+  border-radius:20px;
+
+  background:#002c48aa;
+
+  color:white;
+
+  font-size:13px;
+
+  font-weight:900;
+
+  backdrop-filter:blur(5px);
+
+}
+
+
+/* =====================================================
+   DUCK
+===================================================== */
+
+.duck2d{
+
+  position:absolute;
+
+  left:90px;
+
+  top:24px;
+
+  width:75px;
+
+  height:48px;
+
+  z-index:10;
+
+  transition:
+    left 1.2s cubic-bezier(.2,.8,.2,1);
+
+  animation:
+    duckBob .7s ease-in-out infinite alternate;
+
+}
+
+
+/* thân vịt */
+
+.duckBody{
+
+  position:absolute;
+
+  left:12px;
+  top:12px;
+
+  width:52px;
+  height:34px;
+
+  border-radius:
+    60% 55% 50% 55%;
+
+  background:#ffd43b;
+
+  box-shadow:
+    inset -6px -6px 0 #00000012,
+    0 6px 7px #0004;
+
+}
+
+
+/* đầu */
+
+.duckHead{
+
+  position:absolute;
+
+  left:39px;
+  top:-7px;
+
+  width:32px;
+  height:32px;
+
+  border-radius:50%;
+
+  background:inherit;
+
+}
+
+
+/* mắt */
+
+.duckEye{
+
+  position:absolute;
+
+  width:6px;
+  height:6px;
+
+  border-radius:50%;
+
+  background:#111;
+
+  left:20px;
+  top:8px;
+
+  z-index:5;
+
+}
+
+
+/* mỏ */
+
+.duckBeak{
+
+  position:absolute;
+
+  left:27px;
+  top:15px;
+
+  width:17px;
+  height:9px;
+
+  background:#ff8c22;
+
+  border-radius:
+    70% 20% 70% 20%;
+
+  transform:rotate(-4deg);
+
+  z-index:6;
+
+}
+
+
+/* cánh */
+
+.duckWing{
+
+  position:absolute;
+
+  left:18px;
+  top:20px;
+
+  width:25px;
+  height:15px;
+
+  border-radius:
+    70% 30% 70% 30%;
+
+  background:#00000018;
+
+  transform-origin:right center;
+
+  animation:
+    wingFlap .28s ease-in-out infinite alternate;
+
+  z-index:8;
+
+}
+
+@keyframes wingFlap{
+
+  from{
+    transform:rotate(8deg);
+  }
+
+  to{
+    transform:rotate(-25deg);
+  }
+
+}
+
+
+/* =====================================================
+   DUCK COLORS
+===================================================== */
+
+.duck1 .duckBody,
+.duck1 .duckHead{
+  background:#ff5252;
+}
+
+.duck2 .duckBody,
+.duck2 .duckHead{
+  background:#4d9fff;
+}
+
+.duck3 .duckBody,
+.duck3 .duckHead{
+  background:#35d07f;
+}
+
+.duck4 .duckBody,
+.duck4 .duckHead{
+  background:#ffd43b;
+}
+
+.duck5 .duckBody,
+.duck5 .duckHead{
+  background:#b76cff;
+}
+
+
+/* =====================================================
+   WATER SPLASH
+===================================================== */
+
+.splash{
+
+  position:absolute;
+
+  left:-10px;
+  top:38px;
+
+  width:72px;
+  height:14px;
+
+  border-bottom:
+    4px solid #ffffffaa;
+
+  border-radius:50%;
+
+  animation:
+    splashMove .35s ease-in-out infinite alternate;
+
+}
+
+@keyframes splashMove{
+
+  from{
+    transform:scaleX(.75);
+  }
+
+  to{
+    transform:scaleX(1.15);
+  }
+
+}
+
+
+/* =====================================================
+   BUBBLES
+===================================================== */
+
+.bubble{
+
+  position:absolute;
+
+  color:#ffffffaa;
+
+  font-size:15px;
+
+  animation:
+    bubbleUp 1.8s ease-out infinite;
+
+}
+
+.bubble1{
+  left:0;
+  top:35px;
+}
+
+.bubble2{
+  left:25px;
+  top:40px;
+
+  animation-delay:.6s;
+}
+
+@keyframes bubbleUp{
+
+  0%{
+    transform:translateY(0);
+    opacity:0;
+  }
+
+  25%{
+    opacity:1;
+  }
+
+  100%{
+    transform:translateY(-45px);
+    opacity:0;
+  }
+
+}
+
+
+/* =====================================================
+   DUCK BOB
+===================================================== */
+
+@keyframes duckBob{
+
+  from{
+    transform:
+      translateY(3px)
+      rotate(-2deg);
+  }
+
+  to{
+    transform:
+      translateY(-4px)
+      rotate(3deg);
+  }
+
+}
+
+
+/* =====================================================
+   BURST WHEN SCORE INCREASES
+===================================================== */
+
+.duckBurst{
+
+  animation:
+    duckBurst .65s ease-out !important;
+
+}
+
+@keyframes duckBurst{
+
+  0%{
+    transform:scale(1);
+  }
+
+  35%{
+    transform:scale(1.3) rotate(-8deg);
+  }
+
+  65%{
+    transform:scale(.95) rotate(6deg);
+  }
+
+  100%{
+    transform:scale(1);
+  }
+
+}
+
+
+/* =====================================================
+   FINISH LINE
+===================================================== */
+
+.finishLine{
+
+  position:absolute;
+
+  right:25px;
+
+  top:0;
+
+  height:100%;
+
+  width:8px;
+
+  z-index:4;
+
+  background:
+    repeating-linear-gradient(
+      0deg,
+      #fff 0px,
+      #fff 18px,
+      #111 18px,
+      #111 36px
+    );
+
+  opacity:.8;
+
+}
+
+
+/* cờ */
+
+.finishFlag{
+
+  position:absolute;
+
+  right:8px;
+
+  top:5px;
+
+  font-size:34px;
+
+  z-index:30;
+
+}
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media(max-width:900px){
+
+  .bigq{
+    font-size:28px;
+  }
+
+  .bigopt{
+    font-size:20px;
+  }
+
+  .score{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .bigopts{
+    grid-template-columns:1fr;
+  }
+
+  #race{
+    min-height:410px;
+  }
+
+}
+
+</style>
 </head>
+
+
 <body>
-  <div class="wrap">
-    <h1 style="text-align: center; text-transform: uppercase; letter-spacing: 1px; color: #48dbfb;">
-      🌊 ĐUA VỊT SÔNG  🦆
-    </h1>
 
-    <!-- BẢNG CÂU HỎI -->
-    <div class="card" style="padding: 12px;">
-      <div class="question-box">
-        <h2 id="qTitle" style="color: #48dbfb; margin-bottom: 8px; font-size: 22px;">Đang chờ trò chơi bắt đầu...</h2>
-        <h1 id="qText" style="font-size: 26px; margin: 8px 0; color: #fff;"></h1>
-        <div id="optionsGrid" class="options-grid" style="display: none;">
-          <div id="opt0" class="option-card">A. </div>
-          <div id="opt1" class="option-card">B. </div>
-          <div id="opt2" class="option-card">C. </div>
-          <div id="opt3" class="option-card">D. </div>
-        </div>
-      </div>
-      <div id="statusBanner" class="status-banner"></div>
-    </div>
+<div class="screen">
 
-    <!-- DÒNG SÔNG ĐUA VỊT ANIME -->
-    <div class="river-bank">
-      <div class="river-container">
-        <div class="finish-line"></div>
-        <div id="lanes"></div>
-      </div>
-    </div>
+
+  <!-- HEADER -->
+
+  <div class="small">
+    🦆 VỊT CHỈ BIỂU DIỄN THỨ HẠNG ĐIỂM —
+    KHÔNG CON NÀO VỀ ĐÍCH ĐỂ QUYẾT ĐỊNH THẮNG
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const s = io();
-    let currentQ = null;
-    const maxScore = 100; // Mốc điểm chạm đích (100đ = tới vạch đích)
 
-    // Đồ họa SVG Vịt Anime 2D cực dễ thương với mắt long long & gợn sóng nước
-    function getAnimeDuckSVG(colorHex = "#FFDD59") {
-      return `
-        <div class="anime-duck-avatar">
-          <svg width="65" height="52" viewBox="0 0 100 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- Vệt sóng nước dưới bụng -->
-            <ellipse cx="48" cy="74" rx="38" ry="5" fill="rgba(255,255,255,0.6)"/>
-            <!-- Đuôi xòe -->
-            <path d="M 18 45 Q 8 32 18 28 Q 28 36 34 44 Z" fill="#FFC048"/>
-            <!-- Thân vịt -->
-            <path d="M 22 42 C 18 62 42 76 72 72 C 86 68 90 56 82 44 C 72 38 58 44 22 42 Z" fill="${colorHex}"/>
-            <!-- Cánh vịt -->
-            <path d="M 36 48 C 28 58 46 66 56 54 C 60 48 48 46 36 48 Z" fill="#FFC048"/>
-            <!-- Đầu vịt -->
-            <circle cx="66" cy="32" r="21" fill="${colorHex}"/>
-            <!-- Mỏ vịt Anime -->
-            <path d="M 80 30 C 95 28 98 40 80 40 Z" fill="#FF5252"/>
-            <!-- Mắt Anime long lanh -->
-            <ellipse cx="70" cy="27" rx="5" ry="7" fill="#1E272C"/>
-            <circle cx="72" cy="25" r="2.5" fill="#FFFFFF"/>
-            <circle cx="68" cy="29" r="1.2" fill="#FFFFFF"/>
-            <!-- Má hồng -->
-            <ellipse cx="60" cy="35" rx="4" ry="2.5" fill="#FF7878" opacity="0.75"/>
-          </svg>
+  <div class="head">
+
+    <div>
+
+      <h1>🦆 DUCK RACE</h1>
+
+      <div class="small">
+        MÀN HÌNH TRÌNH CHIẾU
+      </div>
+
+    </div>
+
+    <div id="qnum"></div>
+
+  </div>
+
+
+  <!-- ALERT -->
+
+  <div id="alert" class="alert">
+    🎤 MC đang chuẩn bị câu hỏi...
+  </div>
+
+
+  <!-- QUESTION -->
+
+  <div id="q" class="bigq">
+    Chờ câu hỏi...
+  </div>
+
+
+  <div id="opts" class="bigopts"></div>
+
+
+  <!-- =================================================
+       RACE
+  ================================================= -->
+
+  <div class="card">
+
+    <h2>
+      🏁 DUCK RACE
+    </h2>
+
+    <div id="race">
+
+      <!-- background waves -->
+
+      <div class="waveLayer wave1"></div>
+      <div class="waveLayer wave2"></div>
+      <div class="waveLayer wave3"></div>
+
+
+      <!-- finish -->
+
+      <div class="finishFlag">
+        🏁
+      </div>
+
+      <div class="finishLine"></div>
+
+
+      <!-- LANES -->
+
+      <div class="raceLane">
+
+        <div class="laneName">
+          NHÓM 1
         </div>
-      `;
+
+        <div class="duck2d duck1" id="duck0">
+
+          <div class="splash"></div>
+
+          <div class="duckBody">
+
+            <div class="duckWing"></div>
+
+          </div>
+
+          <div class="duckHead">
+
+            <div class="duckEye"></div>
+
+            <div class="duckBeak"></div>
+
+          </div>
+
+          <div class="bubble bubble1">
+            ○
+          </div>
+
+          <div class="bubble bubble2">
+            ○
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="raceLane">
+
+        <div class="laneName">
+          NHÓM 2
+        </div>
+
+        <div class="duck2d duck2" id="duck1">
+
+          <div class="splash"></div>
+
+          <div class="duckBody">
+
+            <div class="duckWing"></div>
+
+          </div>
+
+          <div class="duckHead">
+
+            <div class="duckEye"></div>
+
+            <div class="duckBeak"></div>
+
+          </div>
+
+          <div class="bubble bubble1">
+            ○
+          </div>
+
+          <div class="bubble bubble2">
+            ○
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="raceLane">
+
+        <div class="laneName">
+          NHÓM 3
+        </div>
+
+        <div class="duck2d duck3" id="duck2">
+
+          <div class="splash"></div>
+
+          <div class="duckBody">
+
+            <div class="duckWing"></div>
+
+          </div>
+
+          <div class="duckHead">
+
+            <div class="duckEye"></div>
+
+            <div class="duckBeak"></div>
+
+          </div>
+
+          <div class="bubble bubble1">
+            ○
+          </div>
+
+          <div class="bubble bubble2">
+            ○
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="raceLane">
+
+        <div class="laneName">
+          NHÓM 4
+        </div>
+
+        <div class="duck2d duck4" id="duck3">
+
+          <div class="splash"></div>
+
+          <div class="duckBody">
+
+            <div class="duckWing"></div>
+
+          </div>
+
+          <div class="duckHead">
+
+            <div class="duckEye"></div>
+
+            <div class="duckBeak"></div>
+
+          </div>
+
+          <div class="bubble bubble1">
+            ○
+          </div>
+
+          <div class="bubble bubble2">
+            ○
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="raceLane">
+
+        <div class="laneName">
+          NHÓM 5
+        </div>
+
+        <div class="duck2d duck5" id="duck4">
+
+          <div class="splash"></div>
+
+          <div class="duckBody">
+
+            <div class="duckWing"></div>
+
+          </div>
+
+          <div class="duckHead">
+
+            <div class="duckEye"></div>
+
+            <div class="duckBeak"></div>
+
+          </div>
+
+          <div class="bubble bubble1">
+            ○
+          </div>
+
+          <div class="bubble bubble2">
+            ○
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- SCORE -->
+
+  <div class="card">
+
+    <h2>
+      🏆 ĐIỂM CÁC NHÓM
+    </h2>
+
+    <div id="score" class="score"></div>
+
+  </div>
+
+
+</div>
+
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+
+const s = io();
+
+/*
+=======================================================
+LƯU VỊ TRÍ CŨ
+=======================================================
+*/
+
+let lastScores = [0,0,0,0,0];
+
+
+/*
+=======================================================
+RENDER
+=======================================================
+*/
+
+function render(x){
+
+  /*
+  -----------------------------
+  SCORE
+  -----------------------------
+  */
+
+  const teams =
+    Object.values(x.teams);
+
+
+  document.getElementById("score").innerHTML =
+    teams.map((t,i)=>`
+
+      <div class="s">
+
+        ${t.name}
+
+        <br>
+
+        <span style="font-size:26px">
+          ${t.score}
+        </span>
+
+        điểm
+
+      </div>
+
+    `).join("");
+
+
+  /*
+  -----------------------------
+  DUCK POSITION
+  -----------------------------
+  */
+
+  const maxScore =
+    Math.max(
+      1,
+      ...teams.map(
+        t => Number(t.score) || 0
+      )
+    );
+
+
+  teams.forEach((t,i)=>{
+
+    const duck =
+      document.getElementById("duck"+i);
+
+    if(!duck) return;
+
+
+    const score =
+      Number(t.score) || 0;
+
+
+    /*
+      Vịt cao điểm nhất = đi xa nhất.
+
+      QUAN TRỌNG:
+      82% là giới hạn.
+
+      Vì vậy vịt KHÔNG BAO GIỜ
+      chạm vạch đích.
+    */
+
+    const progress =
+      (score / maxScore) * 82;
+
+
+    /*
+      Tính chiều rộng đường đua
+    */
+
+    const raceWidth =
+      document.getElementById("race").clientWidth;
+
+
+    const maxPixels =
+      raceWidth * .82;
+
+
+    const position =
+      (progress / 82) * maxPixels;
+
+
+    /*
+      Vịt bắt đầu ở khoảng 90px
+    */
+
+    duck.style.left =
+      Math.max(
+        90,
+        position
+      ) + "px";
+
+
+    /*
+      Hiệu ứng khi điểm tăng
+    */
+
+    if(
+      lastScores[i] !== undefined &&
+      score > lastScores[i]
+    ){
+
+      duck.classList.remove(
+        "duckBurst"
+      );
+
+      void duck.offsetWidth;
+
+      duck.classList.add(
+        "duckBurst"
+      );
+
     }
 
-    const teamColors = ["#FFDD59", "#48DBFB", "#FF6B6B", "#1DD1A1", "#FCA5A5"];
+  });
 
-    s.on("questionStarted", d => {
-      currentQ = d.question;
-      document.getElementById("qTitle").textContent = `CÂU HỎI SỐ ${d.number}`;
-      document.getElementById("qText").textContent = d.question.q;
-      
-      const grid = document.getElementById("optionsGrid");
-      grid.style.display = "grid";
 
-      for (let i = 0; i < 4; i++) {
-        const el = document.getElementById(`opt${i}`);
-        el.className = "option-card";
-        el.textContent = `${"ABCD"[i]}. ${d.question.options[i] || ""}`;
-      }
-      
-      document.getElementById("statusBanner").textContent = "⚡ Nhanh tay bấm chuông giành quyền trả lời!";
-    });
+  lastScores =
+    teams.map(
+      t => Number(t.score) || 0
+    );
 
-    s.on("buzzWinner", d => {
-      document.getElementById("statusBanner").textContent = `🔔 Nhóm ${d.group} (${d.name}) đã bấm chuông nhanh nhất!`;
-    });
 
-    s.on("answerResult", r => {
-      if (r.correct) {
-        document.getElementById("statusBanner").textContent = `🎉 CHÍNH XÁC! Nhóm ${r.group} (${r.name}) ghi điểm!`;
-        
-        if (currentQ && currentQ.answer !== undefined) {
-          const correctOpt = document.getElementById(`opt${currentQ.answer}`);
-          if (correctOpt) correctOpt.classList.add("correct-highlight");
-        }
-      } else {
-        document.getElementById("statusBanner").textContent = `❌ TRẢ LỜI SAI! Nhóm ${r.group} tạm dừng câu này.`;
-      }
-    });
+  /*
+  -----------------------------
+  QUESTION
+  -----------------------------
+  */
 
-    s.on("buzzReopened", () => {
-      setTimeout(() => {
-        document.getElementById("statusBanner").textContent = "⚡ Chuông đã mở lại cho các nhóm khác!";
-      }, 1200);
-    });
+  if(
+    x.currentQuestion >= 0 &&
+    x.questions[x.currentQuestion]
+  ){
 
-    s.on("questionSkipped", d => {
-      document.getElementById("statusBanner").textContent = `⚠️ Không ai trả lời đúng! Chuyển sang câu tiếp theo...`;
-    });
+    const q =
+      x.questions[x.currentQuestion];
 
-    s.on("state", x => {
-      if (x.teams) {
-        const lanesEl = document.getElementById("lanes");
-        lanesEl.innerHTML = x.teams.map((t, idx) => {
-          // Tính toán vị trí vịt lướt trên sông (0% đến 78% chiều dài dòng sông)
-          let progressPercent = Math.min(78, (t.score / maxScore) * 78);
-          let leftPos = `calc(100px + ${progressPercent}%)`;
-          let duckColor = teamColors[idx % teamColors.length];
 
-          return `
-            <div class="river-lane">
-              <div class="lane-badge">${t.name}</div>
-              <div class="duck-wrapper" style="left: ${leftPos};">
-                ${getAnimeDuckSVG(duckColor)}
-                <span class="duck-score-tag">${t.score}đ</span>
-              </div>
-            </div>
-          `;
-        }).join("");
-      }
+    document.getElementById("q")
+      .textContent =
+      q.q;
 
-      if (!x.started && !x.finished) {
-        document.getElementById("qTitle").textContent = "Đang chờ trò chơi bắt đầu...";
-        document.getElementById("qText").textContent = "";
-        document.getElementById("optionsGrid").style.display = "none";
-        document.getElementById("statusBanner").textContent = "";
-      }
-    });
 
-    s.on("gameFinished", d => {
-      document.getElementById("qTitle").textContent = "🏁 GAME KẾT THÚC";
-      document.getElementById("qText").textContent = "CHÚC MỪNG CÁC ĐỘI XUẤT SẮC NHẤT!";
-      document.getElementById("optionsGrid").style.display = "none";
-      document.getElementById("statusBanner").textContent = "";
-    });
+    /*
+      CHỈ sáng đáp án khi
+      answerRevealed = true
 
-    s.on("gameReset", () => {
-      location.reload();
-    });
-  </script>
+      tức là MC đã bấm ĐÚNG.
+    */
+
+    document.getElementById("opts")
+      .innerHTML =
+      q.options.map((o,i)=>`
+
+        <div class="bigopt ${
+          x.answerRevealed &&
+          i === q.answer
+            ? "correct"
+            : ""
+        }">
+
+          ${"ABCD"[i]}. ${o}
+
+          ${
+            x.answerRevealed &&
+            i === q.answer
+              ? " ✓"
+              : ""
+          }
+
+        </div>
+
+      `).join("");
+
+
+    document.getElementById("qnum")
+      .textContent =
+      `Câu ${x.currentQuestion+1}`;
+
+  }
+
+}
+
+
+/*
+=======================================================
+STATE
+=======================================================
+*/
+
+s.on(
+  "state",
+  render
+);
+
+
+/*
+=======================================================
+QUESTION OPENED
+=======================================================
+*/
+
+s.on(
+  "questionOpened",
+  x => {
+
+    document.getElementById("alert")
+      .textContent =
+      "🔔 CÂU HỎI ĐÃ MỞ — AI BẤM NHANH NHẤT?";
+
+
+    document.getElementById("q")
+      .textContent =
+      x.question.q;
+
+
+    /*
+      QUAN TRỌNG:
+
+      Khi mở câu mới,
+      KHÔNG HIỆN ĐÁP ÁN ĐÚNG.
+    */
+
+    document.getElementById("opts")
+      .innerHTML =
+      x.question.options.map(
+        (o,i)=>`
+
+          <div class="bigopt">
+
+            ${"ABCD"[i]}. ${o}
+
+          </div>
+
+        `
+      ).join("");
+
+  }
+);
+
+
+/*
+=======================================================
+BUZZ
+=======================================================
+*/
+
+s.on(
+  "buzzed",
+  x => {
+
+    document.getElementById("alert")
+      .textContent =
+      `🚨 ${x.name} — NHÓM ${x.group} GIÀNH QUYỀN!`;
+
+  }
+);
+
+
+/*
+=======================================================
+WRONG
+=======================================================
+*/
+
+s.on(
+  "wrong",
+  x => {
+
+    document.getElementById("alert")
+      .textContent =
+      `❌ ${x.name} SAI — CÁC NHÓM KHÁC ĐƯỢC CƯỚP!`;
+
+  }
+);
+
+
+/*
+=======================================================
+CORRECT
+=======================================================
+*/
+
+s.on(
+  "result",
+  x => {
+
+    document.getElementById("alert")
+      .textContent =
+      `🎉 NHÓM ${x.group} TRẢ LỜI ĐÚNG! +${x.teamStep} ĐIỂM`;
+
+  }
+);
+
+
+/*
+=======================================================
+RESET BUZZ
+=======================================================
+*/
+
+s.on(
+  "resetBuzz",
+  () => {
+
+    document.getElementById("alert")
+      .textContent =
+      "🔔 CHUÔNG ĐÃ MỞ LẠI — GIÀNH QUYỀN!";
+
+  }
+);
+
+</script>
+
 </body>
 </html>
