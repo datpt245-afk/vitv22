@@ -129,7 +129,7 @@
       bottom: 6px;
       left: 0%;
       z-index: 4;
-      /* Quán tính lướt bơi mượt mà */
+      /* Quán tính lướt bơi siêu mượt */
       transition: left 1.2s cubic-bezier(0.34, 1.3, 0.64, 1);
       display: flex;
       align-items: center;
@@ -188,7 +188,7 @@
     
     <!-- Banner Trạng Thái -->
     <div class="status-banner">
-      <div id="screenWinner" class="winner-title">🦆 ĐƯỜNG ĐUA VỊT SẴN SÀNG!</div>
+      <div id="screenWinner" class="winner-title">🦆 ĐƯỜNG ĐUA VỊT 2D SẴN SÀNG!</div>
       <div id="screenStatus" class="status-sub">Đang chờ MC bắt đầu trò chơi...</div>
     </div>
 
@@ -274,10 +274,16 @@
     }
 
     function renderRace(x) {
-      qs("screenRace").innerHTML = Object.values(x.teams).map((t, i) => {
+      const teams = Object.values(x.teams);
+      // Tìm điểm số cao nhất hiện tại của các nhóm
+      const maxScore = Math.max(...teams.map(t => Number(t.score) || 0), 1);
+
+      qs("screenRace").innerHTML = teams.map((t, i) => {
         const score = Number(t.score) || 0;
-        // Mỗi 1 điểm nhích 4.5% đường đua (Tối đa ~88% để không vượt vạch đích)
-        const pct = Math.min(88, Math.max(2, score * 4.5)); 
+        
+        // Tỉ lệ quãng đường: Con vịt dẫn đầu sẽ nằm ở mốc 85% bể bơi, các vịt khác bơi theo tỉ lệ tương ứng
+        // Giúp con vịt bơi xa nhất luôn rõ ràng mà không sợ vượt khỏi khung hình
+        const pct = score === 0 ? 2 : Math.min(85, Math.max(2, (score / Math.max(maxScore, 10)) * 85));
         const c = teamColors[i] || teamColors[0];
 
         return `
@@ -345,7 +351,7 @@
 
     socket.on("gameFinished", () => {
       qs("screenWinner").textContent = "🏆 TRÒ CHƠI KẾT THÚC!";
-      qs("screenStatus").textContent = "Xin chúc mừng nhóm chiến thắng!";
+      qs("screenStatus").textContent = "Xin chúc mừng nhóm bơi xa nhất!";
     });
   </script>
 </body>
