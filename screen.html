@@ -116,7 +116,7 @@
       <h2 style="margin-top:0; color:#38bdf8;">🏁 ĐƯỜNG ĐUA TRỰC TIẾP</h2>
       <div id="screenRace"></div>
       
-      <!-- Bảng điểm nhanh 5 Nhóm bên dưới đường đua -->
+      <!-- Bảng điểm nhanh 5 Nhóm -->
       <div id="screenScores" class="scoreboard"></div>
     </div>
 
@@ -156,17 +156,18 @@
       const names = ["🟥", "🟦", "🟩", "🟨", "🟪"];
       const colors = ["red", "blue", "green", "yellow", "purple"];
       
-      // Tính % vịt bơi dựa trên điểm cao nhất hoặc mốc chuẩn (mỗi 10 điểm = 100%)
       qs("screenRace").innerHTML = Object.values(x.teams).map((t, i) => {
-        const pct = Math.min(100, Math.max(0, (Number(t.score) || 0) * 10)); 
+        // Tính % đường đua: Mỗi 1 điểm nhích 5% (Mốc 20 điểm = 92% chạm vạch đích)
+        const score = Number(t.score) || 0;
+        const pct = Math.min(92, Math.max(0, score * 5)); 
+
         return `
           <div class="lane">
-            <div class="n">${names[i]} ${t.name}</div>
+            <div class="n">${names[i]} ${t.name} (${score}đ)</div>
             <div class="line"></div>
-            <div class="swimDuck ${colors[i]}" style="left: calc(${pct}% - 30px)">
+            <div class="swimDuck ${colors[i]}" style="left: ${pct}%; position: absolute; transition: left 0.8s ease-in-out;">
               <span class="body">🦆</span>
-              <span class="wave">〰️〰️</span>
-              <span class="splash">💦</span>
+              <span class="wave">〰️</span>
             </div>
             <div class="finish">🏁</div>
           </div>
@@ -183,7 +184,7 @@
       `).join("");
     }
 
-    // Lắng nghe sự kiện từ Server
+    // Lắng nghe sự kiện trực tiếp từ Server
     socket.on("questionOpened", x => {
       qs("screenWinner").textContent = `❓ CÂU HỎI SỐ ${x.index + 1}`;
       qs("screenStatus").textContent = "Các nhóm nhanh tay bấm chuông giành quyền trả lời!";
