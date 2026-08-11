@@ -6,20 +6,20 @@
   <title>Trả Lời Câu Hỏi</title>
   <link rel="stylesheet" href="/style.css">
   <style>
-    body { display: grid; place-items: center; min-height: 100vh; margin: 0; }
+    body { display: grid; place-items: center; min-height: 100vh; margin: 0; background: #0d1117; }
     .box { width: min(94vw, 520px); text-align: center; }
     .timer-box { font-size: 48px; font-weight: 900; color: #ff4757; text-align: center; margin: 10px 0; }
     .opt-btn {
       width: 100%; padding: 15px; margin-bottom: 12px; font-size: 18px; font-weight: bold;
-      background: rgba(255, 255, 255, 0.1); border: 2px solid #48dbfb; color: #fff;
+      background: rgba(255, 255, 255, 0.05); border: 2px solid #38bdf8; color: #fff;
       border-radius: 12px; cursor: pointer; text-align: left; transition: background 0.1s;
     }
-    .opt-btn:active { background: #48dbfb; color: #000; }
+    .opt-btn:active { background: #38bdf8; color: #000; }
   </style>
 </head>
 <body>
   <div class="card box">
-    <h2 style="color: #ffd32a; margin-top: 0;">⏳ THỜI GIAN TRẢ LỜI</h2>
+    <h2 style="color: #f59e0b; margin-top: 0;">⏳ THỜI GIAN TRẢ LỜI</h2>
     <div id="timer" class="timer-box">10</div>
     
     <div id="questionText" class="qbox" style="font-size: 20px; margin-bottom: 20px;"></div>
@@ -32,50 +32,55 @@
     const data = JSON.parse(sessionStorage.getItem("answerData") || "null");
 
     if (!data) {
-      location.href = "/";
-    }
+      const savedGroup = sessionStorage.getItem("userGroup") || "1";
+      location.href = `/?group=${savedGroup}`;
+    } else {
+      // Lưu lại thông tin người chơi vào Session để không bị mất khi quay về
+      sessionStorage.setItem("userName", data.name);
+      sessionStorage.setItem("userGroup", data.group);
 
-    document.getElementById("questionText").textContent = data.question.q;
+      document.getElementById("questionText").textContent = data.question.q;
 
-    const container = document.getElementById("optionsContainer");
-    const labels = ["A", "B", "C", "D"];
-    
-    data.question.options.forEach((opt, idx) => {
-      const btn = document.createElement("button");
-      btn.className = "opt-btn";
-      btn.textContent = `${labels[idx]}. ${opt}`;
-      btn.onclick = () => submit(idx);
-      container.appendChild(btn);
-    });
-
-    let timeLeft = 10;
-    const timerEl = document.getElementById("timer");
-    
-    const interval = setInterval(() => {
-      timeLeft--;
-      timerEl.textContent = timeLeft;
-      if (timeLeft <= 0) {
-        clearInterval(interval);
-        submit(null);
-      }
-    }, 1000);
-
-    let submitted = false;
-    function submit(index) {
-      if (submitted) return;
-      submitted = true;
-      clearInterval(interval);
-
-      s.emit("submitAnswer", {
-        index: index,
-        name: data.name,
-        group: data.group
+      const container = document.getElementById("optionsContainer");
+      const labels = ["A", "B", "C", "D"];
+      
+      data.question.options.forEach((opt, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "opt-btn";
+        btn.textContent = `${labels[idx]}. ${opt}`;
+        btn.onclick = () => submit(idx);
+        container.appendChild(btn);
       });
 
-      sessionStorage.removeItem("answerData");
-      setTimeout(() => {
-        location.href = `/?group=${data.group}`;
-      }, 200);
+      let timeLeft = 10;
+      const timerEl = document.getElementById("timer");
+      
+      const interval = setInterval(() => {
+        timeLeft--;
+        timerEl.textContent = timeLeft;
+        if (timeLeft <= 0) {
+          clearInterval(interval);
+          submit(null);
+        }
+      }, 1000);
+
+      let submitted = false;
+      function submit(index) {
+        if (submitted) return;
+        submitted = true;
+        clearInterval(interval);
+
+        s.emit("submitAnswer", {
+          index: index,
+          name: data.name,
+          group: data.group
+        });
+
+        sessionStorage.removeItem("answerData");
+        setTimeout(() => {
+          location.href = `/?group=${data.group}`;
+        }, 200);
+      }
     }
   </script>
 </body>
