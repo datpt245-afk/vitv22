@@ -129,7 +129,7 @@
       bottom: 6px;
       left: 0%;
       z-index: 4;
-      /* Quán tính lướt bơi siêu mượt */
+      /* Quán tính lướt bơi mượt mà */
       transition: left 1.2s cubic-bezier(0.34, 1.3, 0.64, 1);
       display: flex;
       align-items: center;
@@ -250,7 +250,7 @@
       }).join("");
     }
 
-    // Mẫu SVG Vịt 2D hướng sang phải
+    // Mẫu SVG Vịt 2D vector hướng sang phải
     function getDuckSVG(mainColor, wingColor) {
       return `
         <svg width="65" height="52" viewBox="0 0 100 80" class="duck-body-2d">
@@ -267,7 +267,7 @@
           <!-- Mắt vịt -->
           <circle cx="70" cy="20" r="3.5" fill="#0F172A"/>
           <circle cx="71.5" cy="18.5" r="1.3" fill="#FFFFFF"/>
-          <!-- Má hồng cute -->
+          <!-- Má hồng -->
           <circle cx="64" cy="28" r="4" fill="#F43F5E" opacity="0.4"/>
         </svg>
       `;
@@ -276,7 +276,7 @@
     function renderRace(x) {
       qs("screenRace").innerHTML = Object.values(x.teams).map((t, i) => {
         const score = Number(t.score) || 0;
-        // Mỗi 1 điểm nhích 4.5% đường đua (Tối đa ~88% để không đè vạch đích)
+        // Mỗi 1 điểm nhích 4.5% đường đua (Tối đa ~88% để không vượt vạch đích)
         const pct = Math.min(88, Math.max(2, score * 4.5)); 
         const c = teamColors[i] || teamColors[0];
 
