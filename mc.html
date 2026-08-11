@@ -1,14 +1,14 @@
 <!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Duck Race - MC</title><link rel="stylesheet" href="/style.css"></head>
 <body><div class="wrap">
-<div class="top"><div><h1>🎤 DUCK RACE — BẢNG ĐIỀU KHIỂN MC</h1><div class="sub">5 nhóm • chuông theo thành viên • điểm nhóm + điểm cá nhân • câu hỏi tuần tự</div></div>
+<div class="top"><div><h1>🎤 DUCK RACE — BẢNG ĐIỀU KHIỂN MC</h1><div class="sub">5 nhóm • chuông theo thành viên • điểm nhóm + điểm cá nhân • tự động chấm điểm</div></div>
 <div class="row"><button class="btn dark" onclick="resetBuzz()">🔄 Reset chuông</button><button class="btn bad" onclick="resetGame()">♻️ Reset toàn bộ</button></div></div>
 
 <div class="grid">
 <section>
 <div class="card"><div id="winner" class="winner">🔔 Đang chờ MC mở câu hỏi...</div>
 <div id="qbox" class="qbox">Chưa có câu hỏi</div><div id="opts" class="options"></div>
-<div class="row" style="margin-top:14px"><button id="nextBtn" class="btn primary" onclick="nextQuestion()">▶️ MỞ CÂU ĐẦU TIÊN</button><button class="btn ok" onclick="correct()">✅ ĐÚNG</button><button class="btn bad" onclick="wrong()">❌ SAI / CHO CƯỚP</button></div>
-<div id="status" class="status">Thêm câu hỏi bên dưới, sau đó dùng nút MỞ CÂU / CÂU TIẾP THEO.</div></div>
+<div class="row" style="margin-top:14px"><button id="nextBtn" class="btn primary" onclick="nextQuestion()">▶️ MỞ CÂU ĐẦU TIÊN</button></div>
+<div id="status" class="status">Nhập bộ câu hỏi bên dưới, sau đó bấm MỞ CÂU ĐẦU TIÊN để bắt đầu.</div></div>
 
 <div class="card"><h2>🦆 Đường đua</h2><div id="race"></div></div>
 </section>
@@ -27,29 +27,30 @@
 <input id="newQ" placeholder="Nhập câu hỏi...">
 <div class="grid2" style="margin-top:9px"><input id="a0" placeholder="A. Đáp án"><input id="a1" placeholder="B. Đáp án"><input id="a2" placeholder="C. Đáp án"><input id="a3" placeholder="D. Đáp án"></div>
 <div class="row" style="margin-top:9px"><label>Đáp án đúng:</label><select id="correctAns"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select><button class="btn primary" onclick="addQuestion()">➕ Thêm câu</button></div>
-<p class="muted">Nhập toàn bộ câu hỏi trước khi bắt đầu. Khi chơi, MC chỉ cần bấm MỞ CÂU ĐẦU TIÊN rồi CÂU TIẾP THEO.</p></section>
+<p class="muted">Nhập toàn bộ câu hỏi trước khi bắt đầu. Khi chơi, hệ thống sẽ tự động chấm điểm và chuyển câu theo lượt bấm của người chơi.</p></section>
 <section class="card"><h2>📚 Ngân hàng câu hỏi</h2><div id="bank"></div></section></div>
 
 <div class="card"><h2>🔗 Link chuông 5 nhóm</h2><div id="links"></div></div>
 </div>
 <script src="/socket.io/socket.io.js"></script><script>
-const s=io();let state=null;let lastRace=[];
+const s=io();let state=null;
 const qs=id=>document.getElementById(id);
+
 function render(x){
  state=x;
  qs("teams").innerHTML=Object.values(x.teams).map(t=>`<tr><td>${t.name}</td><td>${t.correct}</td><td><b>${t.score}</b></td></tr>`).join("");
  let people=[];Object.entries(x.teams).forEach(([g,t])=>Object.entries(t.members).forEach(([name,v])=>people.push({name,g,...v})));people.sort((a,b)=>b.score-a.score||b.correct-a.correct);
  qs("people").innerHTML=people.map((p,i)=>`<tr><td>${i+1}</td><td>${p.name}</td><td>Nhóm ${p.g}</td><td>${p.correct}</td><td><b>${p.score}</b></td></tr>`).join("");
- qs("bank").innerHTML=x.questions.length?x.questions.map((q,i)=>`<div class="card" style="margin:7px 0;padding:12px"><b>${i+1}. ${q.q}</b><div class="muted">Đáp án đã cài: ${"ABCD"[q.answer]}</div><button class="btn bad" style="margin-top:8px" onclick="deleteQ(${i})">Xóa</button></div>`).join(""):"<p class='muted'>Chưa có câu hỏi.</p>";
+ qs("bank").innerHTML=x.questions.length?x.questions.map((q,i)=>`<div class="card" style="margin:7px 0;padding:12px"><b>${i+1}. ${q.q}</b><div class="muted">Đáp án đúng: ${"ABCD"[q.answer]}</div><button class="btn bad" style="margin-top:8px" onclick="deleteQ(${i})">Xóa</button></div>`).join(""):"<p class='muted'>Chưa có câu hỏi.</p>";
  const names=["🟥","🟦","🟩","🟨","🟪"],colors=["red","blue","green","yellow","purple"];
  qs("race").innerHTML=Object.values(x.teams).map((t,i)=>{const pct=Math.min(100,Number(t.score)||0);return `<div class="lane"><div class="n">${names[i]} ${t.name} — ${t.score} điểm</div><div class="line"></div><div class="swimDuck ${colors[i]}" id="duck${i}" style="left:calc(${pct}% - 30px)"><span class="body">🦆</span><span class="wave">〰️〰️</span><span class="splash">💦</span></div><div class="finish">🏁</div></div>`}).join("");
  qs("links").innerHTML=[1,2,3,4,5].map(i=>`<p>🔔 <b>Nhóm ${i}</b>: <code>${location.origin}/?group=${i}</code></p>`).join("");
+ 
  if(x.currentQuestion>=0 && x.questions[x.currentQuestion]) showQuestion(x.questions[x.currentQuestion]);
  else {qs("qbox").textContent="Chưa mở câu hỏi";qs("opts").innerHTML="";}
  updateNextButton();
 }
 
-// Màn hình MC sẽ LUÔN LUÔN tô sáng đáp án đúng (có màu xanh và dấu ✓)
 function showQuestion(q){
  qs("qbox").textContent=q.q;
  qs("opts").innerHTML=q.options.map((o,i)=>`<div class="opt ${i===q.answer?'correct':''}">${"ABCD"[i]}. ${o}${i===q.answer?' ✓':''}</div>`).join("");
@@ -59,15 +60,25 @@ function updateNextButton(){if(!state)return;const n=state.currentQuestion+1;if(
 function nextQuestion(){if(!state||!state.questions.length)return alert("Hãy nhập câu hỏi trước.");const n=state.currentQuestion+1;if(n>=state.questions.length)return; s.emit("nextQuestion")}
 function addQuestion(){let q=qs("newQ").value.trim(),opts=[0,1,2,3].map(i=>qs("a"+i).value.trim()),ans=Number(qs("correctAns").value);if(!q||opts.some(x=>!x))return alert("Điền đủ câu hỏi và 4 đáp án.");const arr=(state?.questions||[]).concat([{q,options:opts,answer:ans}]);s.emit("saveQuestions",arr);["newQ","a0","a1","a2","a3"].forEach(id=>qs(id).value="");}
 function deleteQ(i){if(!confirm("Xóa câu này?"))return;const arr=state.questions.slice();arr.splice(i,1);s.emit("saveQuestions",arr)}
-function correct(){s.emit("correct")}
-function wrong(){s.emit("wrong")}
 function resetBuzz(){s.emit("resetBuzz")}
 function resetGame(){if(confirm("Xóa toàn bộ điểm và thành viên?"))s.emit("resetGame")}
 function saveScore(){s.emit("setScoring",{teamStep:Number(qs("teamStep").value),personalPoint:Number(qs("personalPoint").value)})}
+
 s.on("state",render);
-s.on("buzzed",x=>{qs("winner").textContent=`🚨 ${x.name} — NHÓM ${x.group} GIÀNH QUYỀN!`;qs("status").textContent="Hãy kiểm tra câu trả lời rồi bấm ĐÚNG hoặc SAI."});
+s.on("buzzed",x=>{qs("winner").textContent=`🚨 ${x.name} — NHÓM ${x.group} GIÀNH QUYỀN!`;qs("status").textContent="Thành viên đang trong màn hình 10s chọn đáp án..."});
 s.on("questionOpened",x=>{qs("winner").textContent="🔔 Câu hỏi đang mở — chờ chuông!";qs("status").textContent="Các nhóm có thể bấm chuông.";showQuestion(x.question)});
-s.on("result",x=>{qs("winner").textContent=`✅ ${x.name} — Nhóm ${x.group} đúng! +${x.teamStep} nhóm / +${x.personalPoint} cá nhân`;qs("status").textContent="Đáp án đúng đã được bật sáng. Bấm CÂU TIẾP THEO để sang câu mới."});
-s.on("wrong",x=>{qs("winner").textContent=`❌ ${x.name} sai — các nhóm còn lại được CƯỚP!`;qs("status").textContent="Chờ nhóm khác bấm chuông."});
-s.on("resetBuzz",()=>qs("winner").textContent="🔔 Chuông đã reset — tiếp tục giành quyền!");
+s.on("result",x=>{qs("winner").textContent=`✅ ${x.name} — Nhóm ${x.group} trả lời ĐÚNG! +${x.teamStep} điểm nhóm`;qs("status").textContent="Hệ thống chuẩn bị chuyển câu tiếp theo..."});
+s.on("wrong",x=>{
+  if(x.timedOut) {
+    qs("winner").textContent=`⏱️ ${x.name} (Nhóm ${x.group}) HẾT 10S TRẢ LỜI!`;
+  } else {
+    qs("winner").textContent=`❌ ${x.name} (Nhóm ${x.group}) trả lời SAI!`;
+  }
+  qs("status").textContent=`Nhóm ${x.group} đã bị khóa lượt câu này. Các nhóm còn lại được cướp quyền!`;
+});
+s.on("questionSkipped", () => {
+  qs("winner").textContent="⚠️ CẢ 5 NHÓM ĐỀU TRẢ LỜI SAI!";
+  qs("status").textContent="Tự động bỏ qua câu hỏi này và chuyển sang câu tiếp theo...";
+});
+s.on("resetBuzz",()=>qs("winner").textContent="🔔 Chuông đã mở lại — tiếp tục giành quyền!");
 </script></body></html>
