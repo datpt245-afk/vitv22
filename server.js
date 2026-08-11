@@ -8,10 +8,8 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 const PORT = process.env.PORT || 3000;
 
-// Phục vụ tất cả các file tĩnh (HTML, CSS, JS) ngay tại thư mục gốc
 app.use(express.static(__dirname));
 
-// Routing chỉ định rõ từng trang
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
 app.get("/mc", (req, res) => res.sendFile(path.join(__dirname, "mc.html")));
 app.get("/screen", (req, res) => res.sendFile(path.join(__dirname, "screen.html")));
@@ -39,7 +37,8 @@ const pub = () => ({
   teams: S.teams,
   lockedGroups: [...S.locked],
   activeResponder: S.active,
-  timerEndsAt: S.endsAt
+  timerEndsAt: S.endsAt,
+  playerList: [...S.players.values()] // Gửi danh sách người chơi về cho MC xem
 });
 
 const bc = () => io.emit("state", pub());
@@ -49,12 +48,13 @@ function clear() {
   S.timer = null;
 }
 
-function next() {
+function nextQuestion() {
   clear();
   S.active = null;
   S.endsAt = null;
   S.locked.clear();
   S.qi++;
+  
   if (S.qi >= S.questions.length) {
     S.started = false;
     S.finished = true;
@@ -64,7 +64,8 @@ function next() {
     });
     return bc();
   }
-  io.emit("questionStarted", { number: S.qi + 1 });
+  
+  io.emit("questionStarted", { number: S.qi + 1, question: S.questions[S.qi] });
   bc();
 }
 
@@ -75,7 +76,7 @@ function start() {
   S.qi = -1;
   S.teams.forEach(t => (t.score = 0));
   S.inds.clear();
-  next();
+  nextQuestion(); // Bắt đầu câu hỏi 1 khi MC bấm
   return true;
 }
 
@@ -86,7 +87,6 @@ function answer(id, idx, timeout = false, pInfo = null) {
   let p = S.players.get(id) || pInfo || S.active;
   let q = S.questions[S.qi];
   
-  // Kiểm tra đáp án chính xác
   let ok = !timeout && idx !== null && idx !== undefined && Number(idx) === q.answer;
 
   if (ok) {
@@ -103,7 +103,7 @@ function answer(id, idx, timeout = false, pInfo = null) {
     S.active = null;
     S.endsAt = null;
     bc();
-    setTimeout(() => S.started && !S.finished && next(), 1500);
+    setTimeout(() => S.started && !S.finished && nextQuestion(), 1500);
   } else {
     S.locked.add(p.group);
     io.emit("answerResult", { correct: false, name: p.name, group: p.group, timedOut: timeout, points: 0 });
@@ -112,7 +112,7 @@ function answer(id, idx, timeout = false, pInfo = null) {
     if (S.locked.size >= 5) {
       io.emit("questionSkipped", { number: S.qi + 1 });
       bc();
-      setTimeout(() => S.started && !S.finished && next(), 1000);
+      setTimeout(() => S.started && !S.finished && nextQuestion(), 1000);
     } else {
       io.emit("buzzReopened", { lockedGroups: [...S.locked] });
       bc();
@@ -132,7 +132,7 @@ io.on("connection", s => {
     let k = group + ":" + name;
     if (!S.inds.has(k)) S.inds.set(k, { name, group, score: 0 });
     s.emit("joined", { name, group });
-    bc();
+    bc(); // Phát trạng thái mới để giao diện MC cập nhật danh sách người đã vào
   });
 
   s.on("buzz", () => {
@@ -198,8 +198,8 @@ io.on("connection", s => {
   });
 
   s.on("disconnect", () => {
-    // Không tự động đánh rớt lượt trả lời ngay lập tức để tránh lỗi khi người dùng bị refresh/chuyển hướng trang
     S.players.delete(s.id);
+    bc();
   });
 });
 
