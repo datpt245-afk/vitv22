@@ -40,24 +40,26 @@
       margin-top: 5px;
     }
     
-    /* NÚT ĐIỀU KHIỂN ÂM THANH */
+    /* NÚT BẬT/TẮT NHẠC CHILL */
     .audio-control-btn {
       position: absolute;
       top: 10px;
       right: 10px;
-      background: #0284c7;
-      color: #fff;
-      border: none;
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      border: 1px solid #38bdf8;
       padding: 10px 18px;
       border-radius: 30px;
       font-weight: bold;
       cursor: pointer;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
       z-index: 100;
+      backdrop-filter: blur(5px);
       transition: all 0.2s ease;
     }
     .audio-control-btn:hover {
-      background: #0369a1;
+      background: #0284c7;
+      color: #fff;
       transform: scale(1.05);
     }
 
@@ -205,8 +207,8 @@
 <body>
   <div class="screen-container">
     
-    <!-- Nút bật/tắt Âm thanh -->
-    <button id="audioToggleBtn" class="audio-control-btn" onclick="toggleAudio()">🔊 Âm thanh: BẬT</button>
+    <!-- Nút bật/tắt Nhạc nền Chill -->
+    <button id="audioToggleBtn" class="audio-control-btn" onclick="toggleAudio()">🎵 Nhạc Chill: BẬT</button>
 
     <!-- Banner Trạng Thái -->
     <div class="status-banner">
@@ -239,26 +241,21 @@
     const qs = id => document.getElementById(id);
     let currentGameState = null;
 
-    // --- CẤU HÌNH HỆ THỐNG ÂM THANH ---
+    // --- CẤU HÌNH NHẠC NỀN CHILL XUYÊN SUỐT ---
     let soundEnabled = true;
 
-    // Kho âm thanh miễn phí trực tuyến uy tín
-    const sounds = {
-      bgm: new Audio("https://actions.google.com/sounds/v1/water/waves_crashing.ogg"), // Nhạc/tiếng nước bơi nhẹ nhàng
-      buzz: new Audio("https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg"), // Tiếng bấm chuông
-      correct: new Audio("https://actions.google.com/sounds/v1/cartoon/clapping_bell.ogg"), // Tiếng trả lời đúng
-      wrong: new Audio("https://actions.google.com/sounds/v1/cartoon/whistle_slide_down.ogg"), // Tiếng trả lời sai
-      win: new Audio("https://actions.google.com/sounds/v1/crowds/cheering_and_applause.ogg") // Tiếng kết thúc thắng cuộc
-    };
+    // Nhạc chill/ambient thư giãn nhẹ nhàng
+    const chillBGM = new Audio("https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3");
+    chillBGM.loop = true;      // Phát lặp lại liên tục
+    chillBGM.volume = 0.25;    // Âm lượng dịu nhẹ vừa phải
 
-    sounds.bgm.loop = true;
-    sounds.bgm.volume = 0.3; // Nhạc nền âm lượng vừa phải
-
-    function playSound(type) {
-      if (!soundEnabled) return;
-      if (sounds[type]) {
-        sounds[type].currentTime = 0;
-        sounds[type].play().catch(e => console.log("Cần tương tác trang để phát âm thanh"));
+    function startChillMusic() {
+      if (soundEnabled && chillBGM.paused) {
+        chillBGM.play().then(() => {
+          qs("audioToggleBtn").textContent = "🎵 Nhạc Chill: ĐANG PHÁT";
+        }).catch(err => {
+          console.log("Cần 1 click của người dùng để phát âm thanh");
+        });
       }
     }
 
@@ -266,21 +263,21 @@
       soundEnabled = !soundEnabled;
       const btn = qs("audioToggleBtn");
       if (soundEnabled) {
-        btn.textContent = "🔊 Âm thanh: BẬT";
-        btn.style.background = "#0284c7";
-        sounds.bgm.play().catch(() => {});
+        chillBGM.play();
+        btn.textContent = "🎵 Nhạc Chill: ĐANG PHÁT";
+        btn.style.background = "rgba(56, 189, 248, 0.2)";
+        btn.style.color = "#38bdf8";
       } else {
-        btn.textContent = "🔇 Âm thanh: TẮT";
+        chillBGM.pause();
+        btn.textContent = "🔇 Nhạc Chill: TẮT";
         btn.style.background = "#64748b";
-        sounds.bgm.pause();
+        btn.style.color = "#fff";
       }
     }
 
-    // Tự động bật nhạc nền khi bấm bất kỳ đâu trên màn hình
-    document.body.addEventListener('click', () => {
-      if (soundEnabled && sounds.bgm.paused) {
-        sounds.bgm.play().catch(() => {});
-      }
+    // Tự động phát nhạc khi nhấp bất kỳ điểm nào trên màn trình chiếu
+    window.addEventListener('click', () => {
+      startChillMusic();
     }, { once: true });
 
     // Màu sắc đại diện cho 5 đội vịt 2D
@@ -364,24 +361,21 @@
       `).join("");
     }
 
-    // --- SỰ KIỆN KÍCH HOẠT ÂM THANH THEO TIẾN TRÌNH GAME ---
     socket.on("questionOpened", x => {
       qs("screenWinner").textContent = `❓ CÂU HỎI SỐ ${x.index + 1}`;
       qs("screenStatus").textContent = "Các nhóm nhanh tay bấm chuông giành quyền trả lời!";
       showQuestion(x.question, false);
-      if (soundEnabled && sounds.bgm.paused) sounds.bgm.play().catch(() => {});
+      startChillMusic();
     });
 
     socket.on("buzzed", x => {
       qs("screenWinner").textContent = `🚨 ${x.name.toUpperCase()} (NHÓM ${x.group}) BẤM CHUÔNG!`;
       qs("screenStatus").textContent = "Đang có 10 giây để chọn đáp án...";
-      playSound("buzz"); // Phát tiếng Bấm Chuông
     });
 
     socket.on("result", x => {
       qs("screenWinner").textContent = `🎉 ${x.name} (NHÓM ${x.group}) TRẢ LỜI ĐÚNG!`;
       qs("screenStatus").textContent = `+${x.teamStep} điểm nhóm | +${x.personalPoint} điểm cá nhân`;
-      playSound("correct"); // Phát tiếng Trả Lời Đúng
       if (currentGameState && currentGameState.questions[currentGameState.currentQuestion]) {
         showQuestion(currentGameState.questions[currentGameState.currentQuestion], true);
       }
@@ -394,13 +388,11 @@
         qs("screenWinner").textContent = `❌ ${x.name} (NHÓM ${x.group}) TRẢ LỜI SAI!`;
       }
       qs("screenStatus").textContent = `Nhóm ${x.group} bị khóa ở câu này. Mở lại chuông cho các nhóm còn lại!`;
-      playSound("wrong"); // Phát tiếng Trả Lời Sai
     });
 
     socket.on("questionSkipped", () => {
       qs("screenWinner").textContent = "⚠️ CẢ 5 NHÓM ĐỀU KHÔNG TRẢ LỜI ĐÚNG!";
       qs("screenStatus").textContent = "Hệ thống tự động bỏ qua và chuẩn bị chuyển sang câu tiếp theo...";
-      playSound("wrong");
     });
 
     socket.on("resetBuzz", () => {
@@ -411,7 +403,6 @@
     socket.on("gameFinished", () => {
       qs("screenWinner").textContent = "🏆 TRÒ CHƠI KẾT THÚC!";
       qs("screenStatus").textContent = "Xin chúc mừng nhóm bơi xa nhất!";
-      playSound("win"); // Phát tiếng Vô Địch Chiêu Mùa
     });
   </script>
 </body>
