@@ -17,6 +17,7 @@
     .screen-container {
       max-width: 1400px;
       margin: 0 auto;
+      position: relative;
     }
     .status-banner {
       background: rgba(30, 41, 59, 0.85);
@@ -38,6 +39,28 @@
       color: #94a3b8;
       margin-top: 5px;
     }
+    
+    /* NÚT ĐIỀU KHIỂN ÂM THANH */
+    .audio-control-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #0284c7;
+      color: #fff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 30px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 100;
+      transition: all 0.2s ease;
+    }
+    .audio-control-btn:hover {
+      background: #0369a1;
+      transform: scale(1.05);
+    }
+
     .q-card {
       background: #1e293b;
       border-radius: 16px;
@@ -129,13 +152,11 @@
       bottom: 6px;
       left: 0%;
       z-index: 4;
-      /* Quán tính lướt bơi siêu mượt */
       transition: left 1.2s cubic-bezier(0.34, 1.3, 0.64, 1);
       display: flex;
       align-items: center;
     }
     
-    /* Nhấp nhô nhịp nhàng trên mặt nước */
     .duck-body-2d {
       animation: swimFloat 2s ease-in-out infinite;
       transform-origin: bottom center;
@@ -147,7 +168,6 @@
       50% { transform: translateY(-7px) rotate(-3deg); }
     }
 
-    /* Sóng nước sau đuôi vịt */
     .water-ripple {
       position: absolute;
       left: -20px;
@@ -165,7 +185,6 @@
       100% { transform: scale(1.4) translateX(-15px); opacity: 0; }
     }
 
-    /* BẢNG ĐIỂM */
     .scoreboard {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
@@ -186,6 +205,9 @@
 <body>
   <div class="screen-container">
     
+    <!-- Nút bật/tắt Âm thanh -->
+    <button id="audioToggleBtn" class="audio-control-btn" onclick="toggleAudio()">🔊 Âm thanh: BẬT</button>
+
     <!-- Banner Trạng Thái -->
     <div class="status-banner">
       <div id="screenWinner" class="winner-title">🦆 ĐƯỜNG ĐUA VỊT 2D SẴN SÀNG!</div>
@@ -216,6 +238,50 @@
     const socket = io();
     const qs = id => document.getElementById(id);
     let currentGameState = null;
+
+    // --- CẤU HÌNH HỆ THỐNG ÂM THANH ---
+    let soundEnabled = true;
+
+    // Kho âm thanh miễn phí trực tuyến uy tín
+    const sounds = {
+      bgm: new Audio("https://actions.google.com/sounds/v1/water/waves_crashing.ogg"), // Nhạc/tiếng nước bơi nhẹ nhàng
+      buzz: new Audio("https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg"), // Tiếng bấm chuông
+      correct: new Audio("https://actions.google.com/sounds/v1/cartoon/clapping_bell.ogg"), // Tiếng trả lời đúng
+      wrong: new Audio("https://actions.google.com/sounds/v1/cartoon/whistle_slide_down.ogg"), // Tiếng trả lời sai
+      win: new Audio("https://actions.google.com/sounds/v1/crowds/cheering_and_applause.ogg") // Tiếng kết thúc thắng cuộc
+    };
+
+    sounds.bgm.loop = true;
+    sounds.bgm.volume = 0.3; // Nhạc nền âm lượng vừa phải
+
+    function playSound(type) {
+      if (!soundEnabled) return;
+      if (sounds[type]) {
+        sounds[type].currentTime = 0;
+        sounds[type].play().catch(e => console.log("Cần tương tác trang để phát âm thanh"));
+      }
+    }
+
+    function toggleAudio() {
+      soundEnabled = !soundEnabled;
+      const btn = qs("audioToggleBtn");
+      if (soundEnabled) {
+        btn.textContent = "🔊 Âm thanh: BẬT";
+        btn.style.background = "#0284c7";
+        sounds.bgm.play().catch(() => {});
+      } else {
+        btn.textContent = "🔇 Âm thanh: TẮT";
+        btn.style.background = "#64748b";
+        sounds.bgm.pause();
+      }
+    }
+
+    // Tự động bật nhạc nền khi bấm bất kỳ đâu trên màn hình
+    document.body.addEventListener('click', () => {
+      if (soundEnabled && sounds.bgm.paused) {
+        sounds.bgm.play().catch(() => {});
+      }
+    }, { once: true });
 
     // Màu sắc đại diện cho 5 đội vịt 2D
     const teamColors = [
@@ -250,24 +316,16 @@
       }).join("");
     }
 
-    // Mẫu SVG Vịt 2D vector hướng sang phải
     function getDuckSVG(mainColor, wingColor) {
       return `
         <svg width="65" height="52" viewBox="0 0 100 80" class="duck-body-2d">
-          <!-- Đuôi vịt -->
           <path d="M 10 38 Q 0 28 16 30" stroke="${wingColor}" stroke-width="7" stroke-linecap="round" fill="none"/>
-          <!-- Thân vịt -->
           <path d="M 15 40 C 15 62, 45 68, 72 58 C 84 52, 86 38, 76 33 C 65 28, 50 33, 42 26 C 30 26, 18 32, 15 40 Z" fill="${mainColor}"/>
-          <!-- Cánh vịt -->
           <path d="M 26 42 C 26 56, 50 56, 52 42 C 42 36, 32 36, 26 42 Z" fill="${wingColor}"/>
-          <!-- Đầu vịt -->
           <circle cx="64" cy="24" r="18" fill="${mainColor}"/>
-          <!-- Mỏ vịt màu cam -->
           <path d="M 78 20 C 92 21, 95 27, 80 32 Z" fill="#F97316"/>
-          <!-- Mắt vịt -->
           <circle cx="70" cy="20" r="3.5" fill="#0F172A"/>
           <circle cx="71.5" cy="18.5" r="1.3" fill="#FFFFFF"/>
-          <!-- Má hồng -->
           <circle cx="64" cy="28" r="4" fill="#F43F5E" opacity="0.4"/>
         </svg>
       `;
@@ -275,14 +333,10 @@
 
     function renderRace(x) {
       const teams = Object.values(x.teams);
-      // Tìm điểm số cao nhất hiện tại của các nhóm
       const maxScore = Math.max(...teams.map(t => Number(t.score) || 0), 1);
 
       qs("screenRace").innerHTML = teams.map((t, i) => {
         const score = Number(t.score) || 0;
-        
-        // Tỉ lệ quãng đường: Con vịt dẫn đầu sẽ nằm ở mốc 85% bể bơi, các vịt khác bơi theo tỉ lệ tương ứng
-        // Giúp con vịt bơi xa nhất luôn rõ ràng mà không sợ vượt khỏi khung hình
         const pct = score === 0 ? 2 : Math.min(85, Math.max(2, (score / Math.max(maxScore, 10)) * 85));
         const c = teamColors[i] || teamColors[0];
 
@@ -310,21 +364,24 @@
       `).join("");
     }
 
-    // Lắng nghe sự kiện trực tiếp từ Server
+    // --- SỰ KIỆN KÍCH HOẠT ÂM THANH THEO TIẾN TRÌNH GAME ---
     socket.on("questionOpened", x => {
       qs("screenWinner").textContent = `❓ CÂU HỎI SỐ ${x.index + 1}`;
       qs("screenStatus").textContent = "Các nhóm nhanh tay bấm chuông giành quyền trả lời!";
       showQuestion(x.question, false);
+      if (soundEnabled && sounds.bgm.paused) sounds.bgm.play().catch(() => {});
     });
 
     socket.on("buzzed", x => {
       qs("screenWinner").textContent = `🚨 ${x.name.toUpperCase()} (NHÓM ${x.group}) BẤM CHUÔNG!`;
       qs("screenStatus").textContent = "Đang có 10 giây để chọn đáp án...";
+      playSound("buzz"); // Phát tiếng Bấm Chuông
     });
 
     socket.on("result", x => {
       qs("screenWinner").textContent = `🎉 ${x.name} (NHÓM ${x.group}) TRẢ LỜI ĐÚNG!`;
       qs("screenStatus").textContent = `+${x.teamStep} điểm nhóm | +${x.personalPoint} điểm cá nhân`;
+      playSound("correct"); // Phát tiếng Trả Lời Đúng
       if (currentGameState && currentGameState.questions[currentGameState.currentQuestion]) {
         showQuestion(currentGameState.questions[currentGameState.currentQuestion], true);
       }
@@ -337,11 +394,13 @@
         qs("screenWinner").textContent = `❌ ${x.name} (NHÓM ${x.group}) TRẢ LỜI SAI!`;
       }
       qs("screenStatus").textContent = `Nhóm ${x.group} bị khóa ở câu này. Mở lại chuông cho các nhóm còn lại!`;
+      playSound("wrong"); // Phát tiếng Trả Lời Sai
     });
 
     socket.on("questionSkipped", () => {
       qs("screenWinner").textContent = "⚠️ CẢ 5 NHÓM ĐỀU KHÔNG TRẢ LỜI ĐÚNG!";
       qs("screenStatus").textContent = "Hệ thống tự động bỏ qua và chuẩn bị chuyển sang câu tiếp theo...";
+      playSound("wrong");
     });
 
     socket.on("resetBuzz", () => {
@@ -352,6 +411,7 @@
     socket.on("gameFinished", () => {
       qs("screenWinner").textContent = "🏆 TRÒ CHƠI KẾT THÚC!";
       qs("screenStatus").textContent = "Xin chúc mừng nhóm bơi xa nhất!";
+      playSound("win"); // Phát tiếng Vô Địch Chiêu Mùa
     });
   </script>
 </body>
