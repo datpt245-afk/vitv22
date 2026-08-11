@@ -3,59 +3,189 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Màn Chiếu Duck Race</title>
+  <title>Màn Chiếu - Đua Vịt Anime</title>
   <link rel="stylesheet" href="/style.css">
   <style>
+    /* BẢNG CÂU HỎI */
     .question-box {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(15, 23, 42, 0.85);
       padding: 20px;
-      border-radius: 12px;
-      margin-bottom: 20px;
+      border-radius: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      margin-bottom: 15px;
       text-align: center;
     }
     .options-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 15px;
+      gap: 12px;
       margin-top: 15px;
     }
     .option-card {
       background: rgba(255, 255, 255, 0.08);
       border: 2px solid rgba(255, 255, 255, 0.2);
-      padding: 16px;
-      border-radius: 10px;
-      font-size: 20px;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 19px;
       font-weight: bold;
       text-align: left;
-      transition: all 0.4s ease;
+      transition: all 0.3s ease;
     }
-    /* ĐÁP ÁN ĐÚNG SẼ SÁNG LÊN VỚI HIỆU ỨNG NÀY */
     .option-card.correct-highlight {
       background: #2ed573 !important;
       color: #ffffff !important;
       border-color: #7bed9f !important;
       box-shadow: 0 0 25px #2ed573;
-      transform: scale(1.03);
+      transform: scale(1.02);
     }
     .status-banner {
       font-size: 22px;
-      font-weight: bold;
+      font-weight: 800;
       text-align: center;
-      margin: 15px 0;
+      margin: 10px 0;
       min-height: 32px;
       color: #ffd43b;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+    }
+
+    /* BỜ SÔNG & DÒNG SÔNG ANIME */
+    .river-bank {
+      background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+      border-radius: 20px;
+      padding: 12px;
+      box-shadow: inset 0 4px 10px rgba(0,0,0,0.3), 0 10px 25px rgba(0,0,0,0.5);
+      border: 3px solid #34d399;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .river-container {
+      background: linear-gradient(180deg, #0284c7 0%, #0369a1 50%, #075985 100%);
+      border-radius: 12px;
+      position: relative;
+      padding: 10px 0;
+      box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+      overflow: hidden;
+    }
+
+    /* HIỆU ỨNG SÓNG NƯỚC CHẠY GIAO THOA ANIME */
+    .river-container::before {
+      content: "";
+      position: absolute;
+      top: 0; left: -100%; width: 300%; height: 100%;
+      background: repeating-linear-gradient(
+        45deg,
+        rgba(255, 255, 255, 0.05) 0px,
+        rgba(255, 255, 255, 0.05) 20px,
+        transparent 20px,
+        transparent 40px
+      );
+      animation: riverFlow 8s linear infinite;
+      pointer-events: none;
+    }
+
+    @keyframes riverFlow {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(33.33%); }
+    }
+
+    /* LÀN NƯỚC SÔNG */
+    .river-lane {
+      position: relative;
+      height: 65px;
+      border-bottom: 2px dashed rgba(255, 255, 255, 0.25);
+      display: flex;
+      align-items: center;
+    }
+    .river-lane:last-child {
+      border-bottom: none;
+    }
+
+    /* TÊN NHÓM CẮM BỔNG BÊN BỜ SÔNG */
+    .lane-badge {
+      position: absolute;
+      left: 12px;
+      font-weight: 900;
+      font-size: 14px;
+      color: #ffffff;
+      background: linear-gradient(135deg, #ff4757, #ff6b81);
+      padding: 6px 12px;
+      border-radius: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      z-index: 5;
+      border: 2px solid #ffffff;
+      width: 85px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    /* VẠCH ĐÍCH CỜ CARO ANIME */
+    .finish-line {
+      position: absolute;
+      right: 35px;
+      top: 0;
+      bottom: 0;
+      width: 16px;
+      background: repeating-linear-gradient(
+        0deg,
+        #ffffff,
+        #ffffff 12px,
+        #000000 12px,
+        #000000 24px
+      );
+      z-index: 2;
+      box-shadow: 0 0 10px rgba(255,255,255,0.8);
+      border-left: 2px solid #ffd700;
+      border-right: 2px solid #ffd700;
+    }
+
+    /* CON VỊT ANIME 2D & CHUYỂN ĐỘNG NỔI */
+    .duck-wrapper {
+      position: absolute;
+      left: 110px; /* Vị trí xuất phát */
+      transition: left 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* HIỆU ỨNG VỊT NHẤP NHÔ BƠI TRÊN NƯỚC */
+    .anime-duck-avatar {
+      animation: duckBob 1.6s ease-in-out infinite alternate;
+      filter: drop-shadow(0 6px 4px rgba(0,0,0,0.3));
+    }
+
+    @keyframes duckBob {
+      0% { transform: translateY(-2px) rotate(-3deg); }
+      100% { transform: translateY(4px) rotate(4deg); }
+    }
+
+    /* BẢNG ĐIỂM TRÊN ĐẦU VỊT */
+    .duck-score-tag {
+      font-size: 13px;
+      font-weight: 900;
+      background: #ffd32a;
+      color: #1e272e;
+      padding: 3px 8px;
+      border-radius: 12px;
+      border: 2px solid #ffffff;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.3);
     }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1 style="text-align: center;">🏁 MÀN CHIẾU GAME DUCK RACE</h1>
+    <h1 style="text-align: center; text-transform: uppercase; letter-spacing: 1px; color: #48dbfb;">
+      🌊 ĐUA VỊT SÔNG ANIME 2D 🦆
+    </h1>
 
-    <!-- BẢNG CÂU HỎI & ĐÁP ÁN HIỂN THỊ TRÊN MÀN CHIẾU -->
-    <div class="card">
+    <!-- BẢNG CÂU HỎI -->
+    <div class="card" style="padding: 12px;">
       <div class="question-box">
-        <h2 id="qTitle" style="color: #48dbfb; margin-bottom: 10px;">Đang chờ trò chơi bắt đầu...</h2>
-        <h1 id="qText" style="font-size: 28px; margin: 10px 0;"></h1>
+        <h2 id="qTitle" style="color: #48dbfb; margin-bottom: 8px; font-size: 22px;">Đang chờ trò chơi bắt đầu...</h2>
+        <h1 id="qText" style="font-size: 26px; margin: 8px 0; color: #fff;"></h1>
         <div id="optionsGrid" class="options-grid" style="display: none;">
           <div id="opt0" class="option-card">A. </div>
           <div id="opt1" class="option-card">B. </div>
@@ -66,10 +196,12 @@
       <div id="statusBanner" class="status-banner"></div>
     </div>
 
-    <!-- ĐƯỜNG ĐUA / ĐIỂM SỐ CÁC NHÓM -->
-    <div class="card">
-      <h2>🏆 ĐƯỜNG ĐUA CÁC NHÓM</h2>
-      <div id="teams" class="grid5"></div>
+    <!-- DÒNG SÔNG ĐUA VỊT ANIME -->
+    <div class="river-bank">
+      <div class="river-container">
+        <div class="finish-line"></div>
+        <div id="lanes"></div>
+      </div>
     </div>
   </div>
 
@@ -77,6 +209,37 @@
   <script>
     const s = io();
     let currentQ = null;
+    const maxScore = 100; // Mốc điểm chạm đích (100đ = tới vạch đích)
+
+    // Đồ họa SVG Vịt Anime 2D cực dễ thương với mắt long long & gợn sóng nước
+    function getAnimeDuckSVG(colorHex = "#FFDD59") {
+      return `
+        <div class="anime-duck-avatar">
+          <svg width="65" height="52" viewBox="0 0 100 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Vệt sóng nước dưới bụng -->
+            <ellipse cx="48" cy="74" rx="38" ry="5" fill="rgba(255,255,255,0.6)"/>
+            <!-- Đuôi xòe -->
+            <path d="M 18 45 Q 8 32 18 28 Q 28 36 34 44 Z" fill="#FFC048"/>
+            <!-- Thân vịt -->
+            <path d="M 22 42 C 18 62 42 76 72 72 C 86 68 90 56 82 44 C 72 38 58 44 22 42 Z" fill="${colorHex}"/>
+            <!-- Cánh vịt -->
+            <path d="M 36 48 C 28 58 46 66 56 54 C 60 48 48 46 36 48 Z" fill="#FFC048"/>
+            <!-- Đầu vịt -->
+            <circle cx="66" cy="32" r="21" fill="${colorHex}"/>
+            <!-- Mỏ vịt Anime -->
+            <path d="M 80 30 C 95 28 98 40 80 40 Z" fill="#FF5252"/>
+            <!-- Mắt Anime long lanh -->
+            <ellipse cx="70" cy="27" rx="5" ry="7" fill="#1E272C"/>
+            <circle cx="72" cy="25" r="2.5" fill="#FFFFFF"/>
+            <circle cx="68" cy="29" r="1.2" fill="#FFFFFF"/>
+            <!-- Má hồng -->
+            <ellipse cx="60" cy="35" rx="4" ry="2.5" fill="#FF7878" opacity="0.75"/>
+          </svg>
+        </div>
+      `;
+    }
+
+    const teamColors = ["#FFDD59", "#48DBFB", "#FF6B6B", "#1DD1A1", "#FCA5A5"];
 
     s.on("questionStarted", d => {
       currentQ = d.question;
@@ -86,54 +249,62 @@
       const grid = document.getElementById("optionsGrid");
       grid.style.display = "grid";
 
-      // Reset màu sắc đáp án
       for (let i = 0; i < 4; i++) {
         const el = document.getElementById(`opt${i}`);
         el.className = "option-card";
         el.textContent = `${"ABCD"[i]}. ${d.question.options[i] || ""}`;
       }
       
-      document.getElementById("statusBanner").textContent = "⚡ Hãy bấm chuông nhanh tay!";
+      document.getElementById("statusBanner").textContent = "⚡ Nhanh tay bấm chuông giành quyền trả lời!";
     });
 
     s.on("buzzWinner", d => {
-      document.getElementById("statusBanner").textContent = `🔔 Nhóm ${d.group} (${d.name}) đã giành quyền trả lời!`;
+      document.getElementById("statusBanner").textContent = `🔔 Nhóm ${d.group} (${d.name}) đã bấm chuông nhanh nhất!`;
     });
 
     s.on("answerResult", r => {
       if (r.correct) {
-        document.getElementById("statusBanner").textContent = `🎉 CHÍNH XÁC! Nhóm ${r.group} (${r.name}) cộng +${r.points} điểm.`;
+        document.getElementById("statusBanner").textContent = `🎉 CHÍNH XÁC! Nhóm ${r.group} (${r.name}) ghi điểm!`;
         
-        // SÁNG ĐÁP ÁN ĐÚNG LÊN TRÊN MÀN CHIẾU
         if (currentQ && currentQ.answer !== undefined) {
           const correctOpt = document.getElementById(`opt${currentQ.answer}`);
-          if (correctOpt) {
-            correctOpt.classList.add("correct-highlight");
-          }
+          if (correctOpt) correctOpt.classList.add("correct-highlight");
         }
       } else {
-        document.getElementById("statusBanner").textContent = `❌ TRẢ LỜI SAI! Nhóm ${r.group} bị khóa lượt câu này.`;
+        document.getElementById("statusBanner").textContent = `❌ TRẢ LỜI SAI! Nhóm ${r.group} tạm dừng câu này.`;
       }
     });
 
     s.on("buzzReopened", () => {
       setTimeout(() => {
-        document.getElementById("statusBanner").textContent = "⚡ Chuông đã mở lại cho các nhóm còn lại!";
+        document.getElementById("statusBanner").textContent = "⚡ Chuông đã mở lại cho các nhóm khác!";
       }, 1200);
     });
 
     s.on("questionSkipped", d => {
-      document.getElementById("statusBanner").textContent = `⚠️ Tất cả các nhóm đã trả lời sai! Chuyển sang câu tiếp theo...`;
+      document.getElementById("statusBanner").textContent = `⚠️ Không ai trả lời đúng! Chuyển sang câu tiếp theo...`;
     });
 
     s.on("state", x => {
-      // Cập nhật điểm các nhóm
-      document.getElementById("teams").innerHTML = x.teams.map(t => `
-        <div class="teamBox" style="padding: 15px; border-radius: 8px; text-align: center; background: rgba(255,255,255,0.05);">
-          <div style="font-size: 18px;">${t.name}</div>
-          <b style="font-size: 32px; color: #f1c40f;">${t.score}</b> điểm
-        </div>
-      `).join("");
+      if (x.teams) {
+        const lanesEl = document.getElementById("lanes");
+        lanesEl.innerHTML = x.teams.map((t, idx) => {
+          // Tính toán vị trí vịt lướt trên sông (0% đến 78% chiều dài dòng sông)
+          let progressPercent = Math.min(78, (t.score / maxScore) * 78);
+          let leftPos = `calc(100px + ${progressPercent}%)`;
+          let duckColor = teamColors[idx % teamColors.length];
+
+          return `
+            <div class="river-lane">
+              <div class="lane-badge">${t.name}</div>
+              <div class="duck-wrapper" style="left: ${leftPos};">
+                ${getAnimeDuckSVG(duckColor)}
+                <span class="duck-score-tag">${t.score}đ</span>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
 
       if (!x.started && !x.finished) {
         document.getElementById("qTitle").textContent = "Đang chờ trò chơi bắt đầu...";
@@ -145,7 +316,7 @@
 
     s.on("gameFinished", d => {
       document.getElementById("qTitle").textContent = "🏁 GAME KẾT THÚC";
-      document.getElementById("qText").textContent = "CHÚC MỪNG CÁC ĐỘI XUẤT SẮC!";
+      document.getElementById("qText").textContent = "CHÚC MỪNG CÁC ĐỘI XUẤT SẮC NHẤT!";
       document.getElementById("optionsGrid").style.display = "none";
       document.getElementById("statusBanner").textContent = "";
     });
