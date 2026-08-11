@@ -35,11 +35,10 @@ const pub = () => ({
   currentQuestion: S.qi,
   questionCount: S.questions.length,
   teams: S.teams,
-  individuals: [...S.inds.values()].sort((a, b) => b.score - a.score),
   lockedGroups: [...S.locked],
   activeResponder: S.active,
   timerEndsAt: S.endsAt,
-  playerList: [...S.players.values()]
+  playerList: [...S.players.values()] // Gửi danh sách người chơi về cho MC xem
 });
 
 const bc = () => io.emit("state", pub());
@@ -77,7 +76,7 @@ function start() {
   S.qi = -1;
   S.teams.forEach(t => (t.score = 0));
   S.inds.clear();
-  nextQuestion();
+  nextQuestion(); // Bắt đầu câu hỏi 1 khi MC bấm
   return true;
 }
 
@@ -91,26 +90,16 @@ function answer(id, idx, timeout = false, pInfo = null) {
   let ok = !timeout && idx !== null && idx !== undefined && Number(idx) === q.answer;
 
   if (ok) {
-    let groupPts = q.groupPoints !== undefined ? q.groupPoints : 10;
-    let indPts = q.indPoints !== undefined ? q.indPoints : 10;
-
-    // Cộng điểm Nhóm
+    let pts = q.points || 10;
     let t = S.teams.find(t => t.id === p.group);
-    if (t) t.score += groupPts;
+    if (t) t.score += pts;
     
-    // Cộng điểm Cá nhân
     let k = p.group + ":" + p.name;
     let v = S.inds.get(k) || { name: p.name, group: p.group, score: 0 };
-    v.score += indPts;
+    v.score += pts;
     S.inds.set(k, v);
 
-    io.emit("answerResult", { 
-      correct: true, 
-      name: p.name, 
-      group: p.group, 
-      groupPoints: groupPts,
-      indPoints: indPts 
-    });
+    io.emit("answerResult", { correct: true, name: p.name, group: p.group, points: pts });
     S.active = null;
     S.endsAt = null;
     bc();
@@ -143,7 +132,7 @@ io.on("connection", s => {
     let k = group + ":" + name;
     if (!S.inds.has(k)) S.inds.set(k, { name, group, score: 0 });
     s.emit("joined", { name, group });
-    bc();
+    bc(); // Phát trạng thái mới để giao diện MC cập nhật danh sách người đã vào
   });
 
   s.on("buzz", () => {
@@ -180,8 +169,7 @@ io.on("connection", s => {
         q: String(q.q || "").trim(),
         options: Array.isArray(q.options) ? q.options.slice(0, 4).map(String) : [],
         answer: Number(q.answer),
-        groupPoints: Number(q.groupPoints) !== undefined && !isNaN(Number(q.groupPoints)) ? Number(q.groupPoints) : 10,
-        indPoints: Number(q.indPoints) !== undefined && !isNaN(Number(q.indPoints)) ? Number(q.indPoints) : 10
+        points: Number(q.points) || 10
       }))
       .filter(q => q.q && q.options.length === 4 && q.options.every(Boolean) && q.answer >= 0 && q.answer <= 3);
     
@@ -206,26 +194,6 @@ io.on("connection", s => {
     S.active = null;
     S.endsAt = null;
     io.emit("gameReset");
-    bc();
-  });
-
-  s.on("mcAdjustTeamScore", d => {
-    let t = S.teams.find(t => t.id === Number(d.teamId));
-    if (t) {
-      t.score += Number(d.points) || 0;
-      bc();
-    }
-  });
-
-  s.on("mcAdjustIndScore", d => {
-    let k = String(d.playerKey);
-    let v = S.inds.get(k);
-    if (!v) {
-      let parts = k.split(":");
-      v = { name: parts[1] || "", group: Number(parts[0]) || 1, score: 0 };
-    }
-    v.score += Number(d.points) || 0;
-    S.inds.set(k, v);
     bc();
   });
 
