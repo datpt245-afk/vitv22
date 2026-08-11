@@ -21,7 +21,7 @@
     const d = JSON.parse(sessionStorage.getItem("answer") || "null");
     let sent = false;
 
-    if (d) {
+    if (d && d.question) {
       q.textContent = d.question.q;
       a.innerHTML = d.question.options.map((x, i) => 
         `<button class="answerBtn" onclick="send(${i})">${"ABCD"[i]}. ${x}</button>`
@@ -30,7 +30,10 @@
       let timerInt = setInterval(() => {
         let n = Math.max(0, Math.ceil((d.endsAt - Date.now()) / 1000));
         t.textContent = n;
-        if (n <= 0) clearInterval(timerInt);
+        if (n <= 0) {
+          clearInterval(timerInt);
+          document.querySelectorAll(".answerBtn").forEach(x => x.disabled = true);
+        }
       }, 100);
     } else {
       m.textContent = "Không có lượt trả lời.";
