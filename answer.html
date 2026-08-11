@@ -1,1 +1,52 @@
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Trả lời</title><link rel="stylesheet" href="/style.css"></head><body><div class="wrap"><div class="card"><h1 id="q"></h1><div class="timer" id="t">10</div><div id="a" class="answers"></div><h2 id="m"></h2></div></div><script src="/socket.io/socket.io.js"></script><script>const s=io(),d=JSON.parse(sessionStorage.getItem("answer")||"null");let sent=false;if(d){q.textContent=d.question.q;a.innerHTML=d.question.options.map((x,i)=>`<button class="answerBtn" onclick="send(${i})">${"ABCD"[i]}. ${x}</button>`).join("");setInterval(()=>{let n=Math.max(0,Math.ceil((d.endsAt-Date.now())/1000));t.textContent=n},100)}else m.textContent="Không có lượt trả lời.";function send(i){if(sent)return;sent=true;document.querySelectorAll(".answerBtn").forEach(x=>x.disabled=true);s.emit("submitAnswer",i)}s.on("answerResult",r=>{m.textContent=r.correct?"🎉 ĐÚNG!":"❌ SAI / HẾT GIỜ";setTimeout(()=>location="/",1200)})</script></body></html>
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Trả lời</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1 id="q"></h1>
+      <div class="timer" id="t">10</div>
+      <div id="a" class="answers"></div>
+      <h2 id="m"></h2>
+    </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const s = io();
+    const d = JSON.parse(sessionStorage.getItem("answer") || "null");
+    let sent = false;
+
+    if (d) {
+      q.textContent = d.question.q;
+      a.innerHTML = d.question.options.map((x, i) => 
+        `<button class="answerBtn" onclick="send(${i})">${"ABCD"[i]}. ${x}</button>`
+      ).join("");
+
+      let timerInt = setInterval(() => {
+        let n = Math.max(0, Math.ceil((d.endsAt - Date.now()) / 1000));
+        t.textContent = n;
+        if (n <= 0) clearInterval(timerInt);
+      }, 100);
+    } else {
+      m.textContent = "Không có lượt trả lời.";
+    }
+
+    function send(i) {
+      if (sent) return;
+      sent = true;
+      document.querySelectorAll(".answerBtn").forEach(x => x.disabled = true);
+      s.emit("submitAnswer", { index: i, name: d?.name, group: d?.group });
+    }
+
+    s.on("answerResult", r => {
+      m.textContent = r.correct ? "🎉 ĐÚNG!" : "❌ SAI / HẾT GIỜ";
+      setTimeout(() => location = "/", 1200);
+    });
+  </script>
+</body>
+</html>
