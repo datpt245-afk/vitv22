@@ -1,84 +1,368 @@
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Duck Race - MC</title><link rel="stylesheet" href="/style.css"></head>
-<body><div class="wrap">
-<div class="top"><div><h1>🎤 DUCK RACE — BẢNG ĐIỀU KHIỂN MC</h1><div class="sub">5 nhóm • chuông theo thành viên • điểm nhóm + điểm cá nhân • tự động chấm điểm</div></div>
-<div class="row"><button class="btn dark" onclick="resetBuzz()">🔄 Reset chuông</button><button class="btn bad" onclick="resetGame()">♻️ Reset toàn bộ</button></div></div>
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Duck Race - Bảng Điều Khiển MC</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .admin-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+    .status-card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .q-active { font-size: 20px; font-weight: bold; color: #f59e0b; margin-top: 8px; }
+    .q-list-item { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 12px; margin-top: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .badge-ans { background: #10b981; color: #fff; }
+    .backup-zone { background: #1e293b; border: 1px dashed #38bdf8; border-radius: 8px; padding: 12px; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1>🎤 DUCK RACE — BẢNG ĐIỀU KHIỂN MC</h1>
+        <div class="sub">Hệ thống điều khiển trung tâm • Tự động lưu & Đồng bộ câu hỏi</div>
+      </div>
+      <div class="row">
+        <button class="btn dark" onclick="resetBuzz()">🔄 Reset Chuông</button>
+        <button class="btn bad" onclick="resetGame()">♻️ Reset Toàn Bộ</button>
+      </div>
+    </div>
 
-<div class="grid">
-<section>
-<div class="card"><div id="winner" class="winner">🔔 Đang chờ MC mở câu hỏi...</div>
-<div id="qbox" class="qbox">Chưa có câu hỏi</div><div id="opts" class="options"></div>
-<div class="row" style="margin-top:14px"><button id="nextBtn" class="btn primary" onclick="nextQuestion()">▶️ MỞ CÂU ĐẦU TIÊN</button></div>
-<div id="status" class="status">Nhập bộ câu hỏi bên dưới, sau đó bấm MỞ CÂU ĐẦU TIÊN để bắt đầu.</div></div>
+    <div class="admin-grid">
+      <!-- Cột Trái: Trạng thái & Điều khiển câu hỏi -->
+      <section>
+        <div class="card">
+          <div id="winner" class="winner">🔔 Đang chờ MC mở câu hỏi...</div>
+          <div id="qbox" class="qbox">Chưa có câu hỏi nào được chọn</div>
+          <div id="opts" class="options"></div>
+          
+          <div class="row" style="margin-top: 16px;">
+            <button id="nextBtn" class="btn primary" style="font-size: 16px; padding: 12px 24px;" onclick="nextQuestion()">▶️ MỞ CÂU ĐẦU TIÊN</button>
+          </div>
+          <div id="status" class="status">Nhập ngân hàng câu hỏi bên dưới, hệ thống sẽ tự động lưu mãi mãi.</div>
+        </div>
 
-<div class="card"><h2>🦆 Đường đua</h2><div id="race"></div></div>
-</section>
+        <div class="card">
+          <h2>🦆 Đường Đua Trực Tiếp</h2>
+          <div id="race"></div>
+        </div>
 
-<aside>
-<div class="card"><h2>⚙️ Điểm</h2><div class="grid2">
-<div><label>Điểm nhóm / câu đúng</label><input id="teamStep" type="number" value="2" min="1"></div>
-<div><label>Điểm cá nhân / câu đúng</label><input id="personalPoint" type="number" value="1" min="1"></div></div><button class="btn purple" style="margin-top:10px" onclick="saveScore()">Lưu cách tính điểm</button></div>
+        <!-- Khung Nhập & Quản Lý Câu Hỏi -->
+        <div class="card">
+          <h2>📝 Thêm Câu Hỏi Mới</h2>
+          <input id="newQ" placeholder="Nhập nội dung câu hỏi...">
+          <div class="grid2" style="margin-top: 10px;">
+            <input id="a0" placeholder="A. Đáp án A">
+            <input id="a1" placeholder="B. Đáp án B">
+            <input id="a2" placeholder="C. Đáp án C">
+            <input id="a3" placeholder="D. Đáp án D">
+          </div>
+          <div class="row" style="margin-top: 12px;">
+            <label>Đáp án đúng:</label>
+            <select id="correctAns" style="width: auto;">
+              <option value="0">A</option>
+              <option value="1">B</option>
+              <option value="2">C</option>
+              <option value="3">D</option>
+            </select>
+            <button class="btn primary" onclick="addQuestion()">➕ Thêm Vào Danh Sách</button>
+          </div>
 
-<div class="card"><h2>🏆 Tổng điểm nhóm</h2><table><thead><tr><th>Nhóm</th><th>Đúng</th><th>Điểm</th></tr></thead><tbody id="teams"></tbody></table></div>
-<div class="card"><h2>👑 Bảng điểm cá nhân</h2><table><thead><tr><th>#</th><th>Thành viên</th><th>Nhóm</th><th>Đúng</th><th>Điểm</th></tr></thead><tbody id="people"></tbody></table></div>
-</aside></div>
+          <!-- Sao lưu & Nhập File -->
+          <div class="backup-zone">
+            <b style="color: #38bdf8;">💾 Mẹo lưu trữ & Sao lưu câu hỏi:</b>
+            <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 8px 0;">
+              Câu hỏi sẽ tự động lưu trên máy bạn. Bạn có thể xuất file JSON để cất giữ hoặc nạp lại bộ câu hỏi cũ.
+            </p>
+            <div class="row">
+              <button class="btn purple" onclick="exportQuestions()">📥 Tải File Câu Hỏi Về Máy</button>
+              <button class="btn dark" onclick="qs('importFile').click()">📤 Nạp File Câu Hỏi Từ Máy</button>
+              <input type="file" id="importFile" accept=".json" style="display:none" onchange="importQuestions(event)">
+            </div>
+          </div>
+        </div>
 
-<div class="grid">
-<section class="card"><h2>📝 Tạo câu hỏi</h2>
-<input id="newQ" placeholder="Nhập câu hỏi...">
-<div class="grid2" style="margin-top:9px"><input id="a0" placeholder="A. Đáp án"><input id="a1" placeholder="B. Đáp án"><input id="a2" placeholder="C. Đáp án"><input id="a3" placeholder="D. Đáp án"></div>
-<div class="row" style="margin-top:9px"><label>Đáp án đúng:</label><select id="correctAns"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select><button class="btn primary" onclick="addQuestion()">➕ Thêm câu</button></div>
-<p class="muted">Nhập toàn bộ câu hỏi trước khi bắt đầu. Khi chơi, hệ thống sẽ tự động chấm điểm và chuyển câu theo lượt bấm của người chơi.</p></section>
-<section class="card"><h2>📚 Ngân hàng câu hỏi</h2><div id="bank"></div></section></div>
+        <div class="card">
+          <h2>📚 Ngân Hàng Câu Hỏi Hiện Có</h2>
+          <div id="bank"></div>
+        </div>
+      </section>
 
-<div class="card"><h2>🔗 Link chuông 5 nhóm</h2><div id="links"></div></div>
-</div>
-<script src="/socket.io/socket.io.js"></script><script>
-const s=io();let state=null;
-const qs=id=>document.getElementById(id);
+      <!-- Cột Phải: Điểm số & Liên kết -->
+      <aside>
+        <div class="card">
+          <h2>⚙️ Thiết Lập Điểm</h2>
+          <div class="grid2">
+            <div>
+              <label>Điểm nhóm / câu</label>
+              <input id="teamStep" type="number" value="2" min="1">
+            </div>
+            <div>
+              <label>Điểm cá nhân / câu</label>
+              <input id="personalPoint" type="number" value="1" min="1">
+            </div>
+          </div>
+          <button class="btn purple" style="margin-top: 10px; width: 100%;" onclick="saveScore()">Lưu Cấu Hình Điểm</button>
+        </div>
 
-function render(x){
- state=x;
- qs("teams").innerHTML=Object.values(x.teams).map(t=>`<tr><td>${t.name}</td><td>${t.correct}</td><td><b>${t.score}</b></td></tr>`).join("");
- let people=[];Object.entries(x.teams).forEach(([g,t])=>Object.entries(t.members).forEach(([name,v])=>people.push({name,g,...v})));people.sort((a,b)=>b.score-a.score||b.correct-a.correct);
- qs("people").innerHTML=people.map((p,i)=>`<tr><td>${i+1}</td><td>${p.name}</td><td>Nhóm ${p.g}</td><td>${p.correct}</td><td><b>${p.score}</b></td></tr>`).join("");
- qs("bank").innerHTML=x.questions.length?x.questions.map((q,i)=>`<div class="card" style="margin:7px 0;padding:12px"><b>${i+1}. ${q.q}</b><div class="muted">Đáp án đúng: ${"ABCD"[q.answer]}</div><button class="btn bad" style="margin-top:8px" onclick="deleteQ(${i})">Xóa</button></div>`).join(""):"<p class='muted'>Chưa có câu hỏi.</p>";
- const names=["🟥","🟦","🟩","🟨","🟪"],colors=["red","blue","green","yellow","purple"];
- qs("race").innerHTML=Object.values(x.teams).map((t,i)=>{const pct=Math.min(100,Number(t.score)||0);return `<div class="lane"><div class="n">${names[i]} ${t.name} — ${t.score} điểm</div><div class="line"></div><div class="swimDuck ${colors[i]}" id="duck${i}" style="left:calc(${pct}% - 30px)"><span class="body">🦆</span><span class="wave">〰️〰️</span><span class="splash">💦</span></div><div class="finish">🏁</div></div>`}).join("");
- qs("links").innerHTML=[1,2,3,4,5].map(i=>`<p>🔔 <b>Nhóm ${i}</b>: <code>${location.origin}/?group=${i}</code></p>`).join("");
- 
- if(x.currentQuestion>=0 && x.questions[x.currentQuestion]) showQuestion(x.questions[x.currentQuestion]);
- else {qs("qbox").textContent="Chưa mở câu hỏi";qs("opts").innerHTML="";}
- updateNextButton();
-}
+        <div class="card">
+          <h2>🏆 Bảng Điểm Nhóm</h2>
+          <table>
+            <thead>
+              <tr><th>Nhóm</th><th>Đúng</th><th>Điểm</th></tr>
+            </thead>
+            <tbody id="teams"></tbody>
+          </table>
+        </div>
 
-function showQuestion(q){
- qs("qbox").textContent=q.q;
- qs("opts").innerHTML=q.options.map((o,i)=>`<div class="opt ${i===q.answer?'correct':''}">${"ABCD"[i]}. ${o}${i===q.answer?' ✓':''}</div>`).join("");
-}
+        <div class="card">
+          <h2>👑 Xếp Hạng Cá Nhân</h2>
+          <table>
+            <thead>
+              <tr><th>#</th><th>Thành viên</th><th>Nhóm</th><th>Đúng</th><th>Điểm</th></tr>
+            </thead>
+            <tbody id="people"></tbody>
+          </table>
+        </div>
 
-function updateNextButton(){if(!state)return;const n=state.currentQuestion+1;if(!state.questions.length) qs("nextBtn").textContent="▶️ MỞ CÂU ĐẦU TIÊN";else if(n>=state.questions.length) qs("nextBtn").textContent="🏁 ĐÃ HẾT CÂU HỎI";else qs("nextBtn").textContent=state.currentQuestion<0?"▶️ MỞ CÂU ĐẦU TIÊN":`▶️ CÂU TIẾP THEO (${n+1})`;qs("nextBtn").disabled=!state.questions.length||n>=state.questions.length;}
-function nextQuestion(){if(!state||!state.questions.length)return alert("Hãy nhập câu hỏi trước.");const n=state.currentQuestion+1;if(n>=state.questions.length)return; s.emit("nextQuestion")}
-function addQuestion(){let q=qs("newQ").value.trim(),opts=[0,1,2,3].map(i=>qs("a"+i).value.trim()),ans=Number(qs("correctAns").value);if(!q||opts.some(x=>!x))return alert("Điền đủ câu hỏi và 4 đáp án.");const arr=(state?.questions||[]).concat([{q,options:opts,answer:ans}]);s.emit("saveQuestions",arr);["newQ","a0","a1","a2","a3"].forEach(id=>qs(id).value="");}
-function deleteQ(i){if(!confirm("Xóa câu này?"))return;const arr=state.questions.slice();arr.splice(i,1);s.emit("saveQuestions",arr)}
-function resetBuzz(){s.emit("resetBuzz")}
-function resetGame(){if(confirm("Xóa toàn bộ điểm và thành viên?"))s.emit("resetGame")}
-function saveScore(){s.emit("setScoring",{teamStep:Number(qs("teamStep").value),personalPoint:Number(qs("personalPoint").value)})}
+        <div class="card">
+          <h2>🔗 Đường Dẫn Cho Người Chơi</h2>
+          <div id="links"></div>
+        </div>
+      </aside>
+    </div>
+  </div>
 
-s.on("state",render);
-s.on("buzzed",x=>{qs("winner").textContent=`🚨 ${x.name} — NHÓM ${x.group} GIÀNH QUYỀN!`;qs("status").textContent="Thành viên đang trong màn hình 10s chọn đáp án..."});
-s.on("questionOpened",x=>{qs("winner").textContent="🔔 Câu hỏi đang mở — chờ chuông!";qs("status").textContent="Các nhóm có thể bấm chuông.";showQuestion(x.question)});
-s.on("result",x=>{qs("winner").textContent=`✅ ${x.name} — Nhóm ${x.group} trả lời ĐÚNG! +${x.teamStep} điểm nhóm`;qs("status").textContent="Hệ thống chuẩn bị chuyển câu tiếp theo..."});
-s.on("wrong",x=>{
-  if(x.timedOut) {
-    qs("winner").textContent=`⏱️ ${x.name} (Nhóm ${x.group}) HẾT 10S TRẢ LỜI!`;
-  } else {
-    qs("winner").textContent=`❌ ${x.name} (Nhóm ${x.group}) trả lời SAI!`;
-  }
-  qs("status").textContent=`Nhóm ${x.group} đã bị khóa lượt câu này. Các nhóm còn lại được cướp quyền!`;
-});
-s.on("questionSkipped", () => {
-  qs("winner").textContent="⚠️ CẢ 5 NHÓM ĐỀU TRẢ LỜI SAI!";
-  qs("status").textContent="Tự động bỏ qua câu hỏi này và chuyển sang câu tiếp theo...";
-});
-s.on("resetBuzz",()=>qs("winner").textContent="🔔 Chuông đã mở lại — tiếp tục giành quyền!");
-</script></body></html>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let state = null;
+    let isAutoSynced = false;
+    const qs = id => document.getElementById(id);
+
+    function render(x) {
+      state = x;
+
+      // TỰ ĐỘNG ĐỒNG BỘ: Nếu Server bị rỗng (do Render xả đĩa), đẩy câu hỏi từ LocalStorage lên Server
+      if (!isAutoSynced && (!x.questions || x.questions.length === 0)) {
+        const savedLocally = localStorage.getItem("duck_race_questions");
+        if (savedLocally) {
+          try {
+            const parsed = JSON.parse(savedLocally);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              isAutoSynced = true;
+              socket.emit("saveQuestions", parsed);
+            }
+          } catch(e) {}
+        }
+      }
+
+      // Lưu trữ bản sao mới nhất vào LocalStorage trình duyệt MC
+      if (x.questions && x.questions.length > 0) {
+        localStorage.setItem("duck_race_questions", JSON.stringify(x.questions));
+      }
+
+      // Render Bảng điểm nhóm
+      qs("teams").innerHTML = Object.values(x.teams).map(t => 
+        `<tr><td><b>${t.name}</b></td><td>${t.correct}</td><td><b style="color:#38bdf8">${t.score}</b></td></tr>`
+      ).join("");
+
+      // Render Bảng điểm cá nhân
+      let people = [];
+      Object.entries(x.teams).forEach(([g, t]) => {
+        Object.entries(t.members).forEach(([name, v]) => {
+          people.push({ name, g, ...v });
+        });
+      });
+      people.sort((a, b) => b.score - a.score || b.correct - a.correct);
+      
+      qs("people").innerHTML = people.length ? people.map((p, i) => 
+        `<tr><td>${i + 1}</td><td>${p.name}</td><td>Nhóm ${p.g}</td><td>${p.correct}</td><td><b>${p.score}</b></td></tr>`
+      ).join("") : `<tr><td colspan="5" class="muted" style="text-align:center">Chưa có người chơi tham gia</td></tr>`;
+
+      // Render Ngân hàng câu hỏi
+      qs("bank").innerHTML = x.questions.length ? x.questions.map((q, i) => `
+        <div class="q-list-item">
+          <div>
+            <div><b>Câu ${i + 1}:</b> ${q.q}</div>
+            <span class="badge badge-ans">Đáp án đúng: ${["A", "B", "C", "D"][q.answer]}</span>
+          </div>
+          <button class="btn bad" style="padding: 4px 8px; font-size: 12px;" onclick="deleteQ(${i})">Xóa</button>
+        </div>
+      `).join("") : "<p class='muted'>Chưa có câu hỏi nào trong ngân hàng.</p>";
+
+      // Render Đường đua vịt
+      const icons = ["🟥", "🟦", "🟩", "🟨", "🟪"];
+      const colors = ["red", "blue", "green", "yellow", "purple"];
+      qs("race").innerHTML = Object.values(x.teams).map((t, i) => {
+        const pct = Math.min(100, Math.max(0, (Number(t.score) || 0) * 10));
+        return `
+          <div class="lane">
+            <div class="n">${icons[i]} ${t.name} — ${t.score} đ</div>
+            <div class="line"></div>
+            <div class="swimDuck ${colors[i]}" style="left: calc(${pct}% - 30px)">
+              <span class="body">🦆</span>
+              <span class="wave">〰️〰️</span>
+            </div>
+            <div class="finish">🏁</div>
+          </div>
+        `;
+      }).join("");
+
+      // Render Link kết nối 5 nhóm
+      qs("links").innerHTML = [1, 2, 3, 4, 5].map(i => 
+        `<p style="margin: 6px 0; font-size: 13px;">🔔 <b>Nhóm ${i}:</b> <code>${location.origin}/?group=${i}</code></p>`
+      ).join("");
+
+      // Cập nhật thông tin câu hỏi hiện tại
+      if (x.currentQuestion >= 0 && x.questions[x.currentQuestion]) {
+        showQuestion(x.questions[x.currentQuestion], x.answerRevealed);
+      } else {
+        qs("qbox").textContent = "Chưa mở câu hỏi";
+        qs("opts").innerHTML = "";
+      }
+      updateNextButton();
+    }
+
+    function showQuestion(q, reveal = false) {
+      qs("qbox").textContent = `Câu ${state.currentQuestion + 1}: ${q.q}`;
+      const labels = ["A", "B", "C", "D"];
+      qs("opts").innerHTML = q.options.map((o, i) => `
+        <div class="opt ${reveal && i === q.answer ? 'correct' : ''}">
+          ${labels[i]}. ${o} ${reveal && i === q.answer ? ' ✓' : ''}
+        </div>
+      `).join("");
+    }
+
+    function updateNextButton() {
+      if (!state) return;
+      const nextIdx = state.currentQuestion + 1;
+      const btn = qs("nextBtn");
+      
+      if (!state.questions.length) {
+        btn.textContent = "▶️ MỞ CÂU ĐẦU TIÊN";
+        btn.disabled = true;
+      } else if (nextIdx >= state.questions.length) {
+        btn.textContent = "🏁 ĐÃ HẾT CÂU HỎI";
+        btn.disabled = true;
+      } else {
+        btn.textContent = state.currentQuestion < 0 ? "▶️ MỞ CÂU ĐẦU TIÊN" : `▶️ MỞ CÂU TIẾP THEO (${nextIdx + 1})`;
+        btn.disabled = false;
+      }
+    }
+
+    function nextQuestion() {
+      if (!state || !state.questions.length) return alert("Vui lòng nhập câu hỏi trước.");
+      socket.emit("nextQuestion");
+    }
+
+    function addQuestion() {
+      const q = qs("newQ").value.trim();
+      const opts = [0, 1, 2, 3].map(i => qs("a" + i).value.trim());
+      const ans = Number(qs("correctAns").value);
+
+      if (!q || opts.some(x => !x)) return alert("Vui lòng nhập đầy đủ câu hỏi và 4 đáp án.");
+
+      const updatedList = (state?.questions || []).concat([{ q, options: opts, answer: ans }]);
+      
+      // Lưu tức thì
+      localStorage.setItem("duck_race_questions", JSON.stringify(updatedList));
+      socket.emit("saveQuestions", updatedList);
+
+      ["newQ", "a0", "a1", "a2", "a3"].forEach(id => qs(id).value = "");
+    }
+
+    function deleteQ(i) {
+      if (!confirm("Bạn có chắc chắn muốn xóa câu hỏi này?")) return;
+      const updatedList = state.questions.slice();
+      updatedList.splice(i, 1);
+      
+      localStorage.setItem("duck_race_questions", JSON.stringify(updatedList));
+      socket.emit("saveQuestions", updatedList);
+    }
+
+    // Xuất file JSON lưu trữ
+    function exportQuestions() {
+      if (!state || !state.questions.length) return alert("Chưa có câu hỏi nào để xuất file.");
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.questions, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `cau_hoi_duck_race_${Date.now()}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    // Nạp file JSON từ máy tính/điện thoại
+    function importQuestions(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (Array.isArray(imported)) {
+            localStorage.setItem("duck_race_questions", JSON.stringify(imported));
+            socket.emit("saveQuestions", imported);
+            alert("Nạp bộ câu hỏi thành công!");
+          } else {
+            alert("File không đúng định dạng danh sách câu hỏi.");
+          }
+        } catch(err) {
+          alert("Lỗi đọc file JSON: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function resetBuzz() { socket.emit("resetBuzz"); }
+    function resetGame() {
+      if (confirm("Hành động này sẽ xoá toàn bộ điểm số và thành viên. Bạn có chắc chắn?")) {
+        socket.emit("resetGame");
+      }
+    }
+    function saveScore() {
+      socket.emit("setScoring", {
+        teamStep: Number(qs("teamStep").value),
+        personalPoint: Number(qs("personalPoint").value)
+      });
+      alert("Đã cập nhật cấu hình tính điểm!");
+    }
+
+    // Lắng nghe các sự kiện từ Server
+    socket.on("state", render);
+    
+    socket.on("questionOpened", x => {
+      qs("winner").textContent = `❓ CÂU HỎI SỐ ${x.index + 1} ĐÃ MỞ!`;
+      qs("status").textContent = "Chuông đã bật. Đang chờ người chơi giành quyền trả lời...";
+    });
+
+    socket.on("buzzed", x => {
+      qs("winner").textContent = `🚨 ${x.name.toUpperCase()} (NHÓM ${x.group}) GIÀNH QUYỀN!`;
+      qs("status").textContent = "Thành viên có 10 giây để chọn đáp án trên màn hình điện thoại...";
+    });
+
+    socket.on("result", x => {
+      qs("winner").textContent = `✅ ${x.name} (NHÓM ${x.group}) TRẢ LỜI ĐÚNG!`;
+      qs("status").textContent = `Cộng +${x.teamStep} điểm nhóm và +${x.personalPoint} điểm cá nhân. Chuẩn bị chuyển câu...`;
+    });
+
+    socket.on("wrong", x => {
+      qs("winner").textContent = x.timedOut 
+        ? `⏱️ ${x.name} (NHÓM ${x.group}) HẾT 10 GIÂY!` 
+        : `❌ ${x.name} (NHÓM ${x.group}) TRẢ LỜI SAI!`;
+      qs("status").textContent = `Nhóm ${x.group} đã bị khóa lượt ở câu này. Chuông đã mở cho các nhóm còn lại cướp quyền!`;
+    });
+
+    socket.on("questionSkipped", () => {
+      qs("winner").textContent = "⚠️ CẢ 5 NHÓM ĐỀU TRẢ LỜI SAI!";
+      qs("status").textContent = "Hệ thống tự động bỏ qua và chuẩn bị chuyển sang câu hỏi tiếp theo...";
+    });
+
+    socket.on("resetBuzz", () => {
+      qs("winner").textContent = "🔔 CHUÔNG ĐÃ ĐƯỢC MỞ LẠI!";
+      qs("status").textContent = "Các nhóm chưa bị khóa lượt có thể tiếp tục bấm chuông.";
+    });
+  </script>
+</body>
+</html>
