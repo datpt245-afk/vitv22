@@ -7,12 +7,34 @@
 const p=new URLSearchParams(location.search),group=p.get("group")||"1",s=io();let name="";
 team.textContent="NHÓM "+group;
 
-function join(){name=document.getElementById("name").value.trim();if(!name)return alert("Nhập tên trước nhé!");s.emit("joinMember",{group,name})}
-s.on("joined",x=>{document.getElementById("join").style.display="none";document.getElementById("play").style.display="block";document.getElementById("me").textContent="👤 "+x.name+" • Nhóm "+group});
+// Tự động khôi phục tên nếu đã từng nhập
+window.addEventListener("DOMContentLoaded", () => {
+  const savedName = sessionStorage.getItem("userName");
+  if (savedName) {
+    document.getElementById("name").value = savedName;
+    join();
+  }
+});
 
-function buzz(){document.getElementById("buzz").disabled=true;s.emit("buzz",{group,name})}
+function join(){
+  name=document.getElementById("name").value.trim();
+  if(!name)return alert("Nhập tên trước nhé!");
+  sessionStorage.setItem("userName", name);
+  sessionStorage.setItem("userGroup", group);
+  s.emit("joinMember",{group,name});
+}
 
-// Khi cá nhân bấm nhanh nhất -> nhận dữ liệu và chuyển ngay sang màn hình trả lời
+s.on("joined",x=>{
+  document.getElementById("join").style.display="none";
+  document.getElementById("play").style.display="block";
+  document.getElementById("me").textContent="👤 "+x.name+" • Nhóm "+group;
+});
+
+function buzz(){
+  document.getElementById("buzz").disabled=true;
+  s.emit("buzz",{group,name});
+}
+
 s.on("answerAccess", data => {
   sessionStorage.setItem("answerData", JSON.stringify(data));
   location.href = "/answer.html";
