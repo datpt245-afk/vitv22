@@ -1,225 +1,98 @@
 const express = require("express");
 const http = require("http");
-const path = require("path");
-const fs = require("fs");
 const { Server } = require("socket.io");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
-const PORT = process.env.PORT || 3000;
+const io = new Server(server);
 
+const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, "questions.json");
 
-// Tải danh sách câu hỏi lưu trên đĩa cứng (nếu có)
-let savedQuestions = [];
-try {
-  if (fs.existsSync(DATA_FILE)) {
-    const raw = fs.readFileSync(DATA_FILE, "utf8").trim();
-    if (raw) savedQuestions = JSON.parse(raw);
-  }
-} catch (e) {
-  console.log("Chưa có file câu hỏi cũ hoặc lỗi đọc file:", e.message);
-}
-
+// Phục vụ các file tĩnh (html, css, js) trong thư mục public hoặc gốc
+app.use(express.static(path.join(__dirname, "public")));
 app.use(express.static(__dirname));
 
-// Khởi tạo trạng thái ban đầu của 5 nhóm
-const teams = {};
-for (let i = 1; i <= 5; i++) {
-  teams[i] = { id: i, name: `Nhóm ${i}`, score: 0, correct: 0, members: {} };
-}
-
+// Khởi tạo trạng thái trò chơi
 let game = {
-  teams,
-  questions: savedQuestions,
+  teams: {
+    1: { name: "Nhóm 1", score: 0, correct: 0, members: {} },
+    2: { name: "Nhóm 2", score: 0, correct: 0, members: {} },
+    3: { name: "Nhóm 3", score: 0, correct: 0, members: {} },
+    4: { name: "Nhóm 4", score: 0, correct: 0, members: {} },
+    5: { name: "Nhóm 5", score: 0, correct: 0, members: {} }
+  },
+  questions: [],
   currentQuestion: -1,
   questionOpen: false,
-  lockedGroups: [], // Danh sách các nhóm bị khóa ở câu hiện tại
-  activeResponder: null, // Người duy nhất đang trong màn hình trả lời 10s
-  timerEndsAt: null,
-  teamStep: 2,
-  personalPoint: 1,
-  history: [],
+  activeResponder: null, // { group, name }
+  lockedGroups: [], // Danh sách nhóm đã trả lời sai ở câu hiện tại
+  scoring: {
+    teamStep: 2,
+    personalPoint: 1
+  },
   answerRevealed: false
 };
 
-let serverTimer = null;
+// Đọc ngân hàng câu hỏi từ file nếu có
+function loadQuestions() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE, "utf8");
+      game.questions = JSON.parse(raw);
+      console.log(`[DATA] Đã tải ${game.questions.length} câu hỏi từ file.`);
+    }
+  } catch (err) {
+    console.error("[ERROR] Lỗi khi đọc câu hỏi từ file:", err.message);
+    game.questions = [];
+  }
+}
 
+// Lưu ngân hàng câu hỏi vào file
 function saveQuestionsToFile() {
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(game.questions, null, 2), "utf8");
-  } catch (e) {
-    console.error("Lỗi ghi file câu hỏi:", e);
+    console.log("[DATA] Đã lưu danh sách câu hỏi vào file.");
+  } catch (err) {
+    console.error("[ERROR] Lỗi khi lưu file câu hỏi:", err.message);
   }
 }
+
+loadQuestions();
 
 function snapshot() {
-  return JSON.parse(JSON.stringify(game));
-}
-
-function clearServerTimer() {
-  if (serverTimer) {
-    clearTimeout(serverTimer);
-    serverTimer = null;
-  }
-}
-
-function processNextQuestion() {
-  clearServerTimer();
-  game.activeResponder = null;
-  game.timerEndsAt = null;
-  game.lockedGroups = [];
-  game.answerRevealed = false;
-  
-  game.currentQuestion++;
-  if (game.currentQuestion >= game.questions.length) {
-    game.questionOpen = false;
-    io.emit("gameFinished");
-    return io.emit("state", snapshot());
-  }
-
-  game.questionOpen = true;
-  io.emit("questionOpened", {
-    index: game.currentQuestion,
-    question: game.questions[game.currentQuestion]
-  });
-  io.emit("state", snapshot());
-}
-
-function processAnswer(socketId, group, name, selectedIdx, timedOut = false) {
-  if (!game.activeResponder) return;
-  clearServerTimer();
-
-  group = String(group);
-  name = String(name || "");
-  let q = game.questions[game.currentQuestion];
-  let isCorrect = !timedOut && selectedIdx !== null && selectedIdx !== undefined && Number(selectedIdx) === Number(q.answer);
-
-  if (isCorrect) {
-    // Trả lời ĐÚNG -> Cộng điểm, bật sáng đáp án đúng và chuyển câu sau 2 giây
-    let t = game.teams[group];
-    if (t) {
-      if (!t.members[name]) t.members[name] = { score: 0, correct: 0 };
-      t.score += game.teamStep;
-      t.correct += 1;
-      t.members[name].score += game.personalPoint;
-      t.members[name].correct += 1;
-    }
-
-    game.history.push({ type: "correct", group, name, q: game.currentQuestion, time: Date.now() });
-    game.questionOpen = false;
-    game.activeResponder = null;
-    game.timerEndsAt = null;
-    game.answerRevealed = true;
-
-    io.emit("result", {
-      ok: true,
-      group,
-      name,
-      teamStep: game.teamStep,
-      personalPoint: game.personalPoint
-    });
-    io.emit("state", snapshot());
-
-    setTimeout(() => {
-      processNextQuestion();
-    }, 2000);
-  } else {
-    // Trả lời SAI hoặc HẾT 10S -> Khóa toàn bộ nhóm đó ở câu này
-    if (!game.lockedGroups.includes(group)) {
-      game.lockedGroups.push(group);
-    }
-    
-    game.history.push({ type: "wrong", group, name, q: game.currentQuestion, timedOut, time: Date.now() });
-    game.activeResponder = null;
-    game.timerEndsAt = null;
-
-    io.emit("wrong", { group, name, timedOut });
-
-    // Nếu CẢ 5 NHÓM ĐỀU SAI -> Tự động chuyển sang câu tiếp theo
-    if (game.lockedGroups.length >= 5) {
-      game.questionOpen = false;
-      io.emit("questionSkipped", { index: game.currentQuestion });
-      io.emit("state", snapshot());
-      setTimeout(() => {
-        processNextQuestion();
-      }, 1800);
-    } else {
-      // Mở lại chuông cho các nhóm còn lại cướp quyền
-      io.emit("resetBuzz");
-      io.emit("state", snapshot());
-    }
-  }
+  return {
+    teams: game.teams,
+    questions: game.questions,
+    currentQuestion: game.currentQuestion,
+    questionOpen: game.questionOpen,
+    activeResponder: game.activeResponder,
+    lockedGroups: game.lockedGroups,
+    scoring: game.scoring,
+    answerRevealed: game.answerRevealed
+  };
 }
 
 io.on("connection", socket => {
+  // Gửi trạng thái hiện tại ngay khi kết nối
   socket.emit("state", snapshot());
 
+  // Người chơi tham gia nhóm
   socket.on("joinMember", ({ group, name }) => {
-    group = String(group);
-    name = String(name || "").trim().slice(0, 40);
-    if (!game.teams[group] || !name) return;
-
-    if (!game.teams[group].members[name]) {
-      game.teams[group].members[name] = { score: 0, correct: 0 };
+    const g = String(group);
+    const mName = String(name || "").trim();
+    if (game.teams[g] && mName) {
+      if (!game.teams[g].members[mName]) {
+        game.teams[g].members[mName] = { score: 0, correct: 0 };
+      }
+      socket.emit("joined", { group: g, name: mName });
+      io.emit("state", snapshot());
     }
-    socket.data.group = group;
-    socket.data.name = name;
-    socket.emit("joined", { group, name });
-    io.emit("state", snapshot());
   });
 
-  socket.on("buzz", ({ group, name }) => {
-    group = String(group);
-    name = String(name || "");
-
-    // Kiểm tra câu hỏi có mở, chưa có ai trả lời và nhóm chưa bị khóa
-    if (!game.questionOpen || game.activeResponder || game.lockedGroups.includes(group) || !game.teams[group]) {
-      return;
-    }
-
-    if (!game.teams[group].members[name]) {
-      game.teams[group].members[name] = { score: 0, correct: 0 };
-    }
-
-    game.activeResponder = { socketId: socket.id, group, name };
-    game.timerEndsAt = Date.now() + 10000;
-
-    let q = game.questions[game.currentQuestion];
-
-    // Cấp quyền trả lời riêng cho máy bấm nhanh nhất
-    socket.emit("answerAccess", {
-      question: { q: q.q, options: q.options },
-      endsAt: game.timerEndsAt,
-      group,
-      name
-    });
-
-    io.emit("buzzed", { group, name });
-    io.emit("state", snapshot());
-
-    // Đếm ngược 10 giây trên Server
-    serverTimer = setTimeout(() => {
-      processAnswer(socket.id, group, name, null, true);
-    }, 10000);
-  });
-
-  socket.on("submitAnswer", ({ group, name, index }) => {
-    processAnswer(socket.id, group, name, index, false);
-  });
-
-  socket.on("openQuestion", ({ index }) => {
-    index = Number(index);
-    if (index < 0 || index >= game.questions.length) return;
-    game.currentQuestion = index - 1;
-    processNextQuestion();
-  });
-
-  socket.on("nextQuestion", () => {
-    processNextQuestion();
-  });
-
+  // Lưu danh sách câu hỏi từ MC
   socket.on("saveQuestions", questions => {
     if (!Array.isArray(questions)) return;
     game.questions = questions
@@ -235,35 +108,121 @@ io.on("connection", socket => {
     io.emit("state", snapshot());
   });
 
-  socket.on("setScoring", ({ teamStep, personalPoint }) => {
-    game.teamStep = Math.max(1, Number(teamStep) || 2);
-    game.personalPoint = Math.max(1, Number(personalPoint) || 1);
+  // MC chuyển sang câu hỏi tiếp theo
+  socket.on("nextQuestion", () => {
+    if (game.currentQuestion + 1 < game.questions.length) {
+      game.currentQuestion++;
+      game.questionOpen = true;
+      game.activeResponder = null;
+      game.lockedGroups = [];
+      game.answerRevealed = false;
+
+      io.emit("questionOpened", {
+        index: game.currentQuestion,
+        question: game.questions[game.currentQuestion]
+      });
+      io.emit("state", snapshot());
+    } else {
+      io.emit("gameFinished");
+    }
+  });
+
+  // Người chơi bấm chuông
+  socket.on("buzz", ({ group, name }) => {
+    const g = String(group);
+    if (!game.questionOpen || game.activeResponder || game.lockedGroups.includes(g)) return;
+
+    game.activeResponder = { group: g, name: name };
+    io.emit("buzzed", { group: g, name: name });
+    
+    // Gửi quyền truy cập màn hình trả lời cho đúng người bấm
+    socket.emit("answerAccess", {
+      group: g,
+      name: name,
+      question: game.questions[game.currentQuestion]
+    });
+
     io.emit("state", snapshot());
   });
 
-  socket.on("resetBuzz", () => {
-    if (game.questionOpen) {
-      clearServerTimer();
+  // Người chơi nộp đáp án
+  socket.on("submitAnswer", ({ index, name, group }) => {
+    const g = String(group);
+    if (!game.activeResponder || game.activeResponder.group !== g) return;
+
+    const currentQ = game.questions[game.currentQuestion];
+    const isCorrect = currentQ && index === currentQ.answer;
+
+    if (isCorrect) {
+      // Trả lời ĐÚNG
+      game.questionOpen = false;
+      game.answerRevealed = true;
+
+      // Cộng điểm Nhóm
+      game.teams[g].score += game.scoring.teamStep;
+      game.teams[g].correct += 1;
+
+      // Cộng điểm Cá nhân
+      if (game.teams[g].members[name]) {
+        game.teams[g].members[name].score += game.scoring.personalPoint;
+        game.teams[g].members[name].correct += 1;
+      }
+
+      io.emit("result", {
+        correct: true,
+        name,
+        group: g,
+        teamStep: game.scoring.teamStep,
+        personalPoint: game.scoring.personalPoint
+      });
+      
       game.activeResponder = null;
-      game.timerEndsAt = null;
-      io.emit("resetBuzz");
+      io.emit("state", snapshot());
+    } else {
+      // Trả lời SAI hoặc HẾT GIỜ (index === null)
+      game.lockedGroups.push(g);
+      game.activeResponder = null;
+
+      io.emit("wrong", {
+        name,
+        group: g,
+        timedOut: index === null
+      });
+
+      // Nếu cả 5 nhóm đều sai -> Tự động bỏ qua câu hỏi
+      if (game.lockedGroups.length >= 5) {
+        game.questionOpen = false;
+        game.answerRevealed = true;
+        io.emit("questionSkipped");
+      }
+
       io.emit("state", snapshot());
     }
   });
 
+  // MC reset chuông cho câu hiện tại
+  socket.on("resetBuzz", () => {
+    game.activeResponder = null;
+    io.emit("resetBuzz");
+    io.emit("state", snapshot());
+  });
+
+  // MC cập nhật cấu hình điểm
+  socket.on("setScoring", ({ teamStep, personalPoint }) => {
+    game.scoring.teamStep = Math.max(1, Number(teamStep) || 2);
+    game.scoring.personalPoint = Math.max(1, Number(personalPoint) || 1);
+    io.emit("state", snapshot());
+  });
+
+  // MC reset toàn bộ trò chơi
   socket.on("resetGame", () => {
-    clearServerTimer();
-    for (let i = 1; i <= 5; i++) {
-      game.teams[i].score = 0;
-      game.teams[i].correct = 0;
-      game.teams[i].members = {};
-    }
+    Object.keys(game.teams).forEach(g => {
+      game.teams[g] = { name: `Nhóm ${g}`, score: 0, correct: 0, members: {} };
+    });
     game.currentQuestion = -1;
     game.questionOpen = false;
-    game.lockedGroups = [];
     game.activeResponder = null;
-    game.timerEndsAt = null;
-    game.history = [];
+    game.lockedGroups = [];
     game.answerRevealed = false;
 
     io.emit("fullReset");
@@ -271,4 +230,6 @@ io.on("connection", socket => {
   });
 });
 
-server.listen(PORT, () => console.log(`DUCK RACE đang chạy tại port ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`🚀 Server đang chạy tại đường dẫn port ${PORT}`);
+});
