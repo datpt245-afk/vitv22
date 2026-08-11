@@ -1,12 +1,25 @@
 const express = require("express");
 const http = require("http");
 const path = require("path");
+const fs = require("fs");
 const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 const PORT = process.env.PORT || 3000;
+
+const DATA_FILE = path.join(__dirname, "questions.json");
+
+// Đọc câu hỏi đã lưu từ file nếu server khởi động lại
+let savedQuestions = [];
+try {
+  if (fs.existsSync(DATA_FILE)) {
+    savedQuestions = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+  }
+} catch (e) {
+  console.log("Chưa có câu hỏi cũ hoặc lỗi đọc file:", e.message);
+}
 
 app.use(express.static(__dirname));
 
@@ -19,7 +32,7 @@ const S = {
   started: false,
   finished: false,
   qi: -1,
-  questions: [],
+  questions: savedQuestions,
   teams: [1, 2, 3, 4, 5].map(id => ({ id, name: "Nhóm " + id, score: 0 })),
   players: new Map(),
   inds: new Map(),
@@ -28,6 +41,14 @@ const S = {
   timer: null,
   endsAt: null
 };
+
+function saveQuestionsToFile() {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(S.questions, null, 2), "utf8");
+  } catch (e) {
+    console.error("Lỗi ghi file câu hỏi:", e);
+  }
+}
 
 const pub = () => ({
   started: S.started,
@@ -87,18 +108,15 @@ function answer(id, idx, timeout = false, pInfo = null) {
   
   let p = S.players.get(id) || pInfo || S.active;
   let q = S.questions[S.qi];
-  
   let ok = !timeout && idx !== null && idx !== undefined && Number(idx) === q.answer;
 
   if (ok) {
     let groupPts = q.groupPoints !== undefined ? q.groupPoints : 10;
     let indPts = q.indPoints !== undefined ? q.indPoints : 10;
 
-    // Cộng điểm Nhóm
     let t = S.teams.find(t => t.id === p.group);
     if (t) t.score += groupPts;
     
-    // Cộng điểm Cá nhân
     let k = p.group + ":" + p.name;
     let v = S.inds.get(k) || { name: p.name, group: p.group, score: 0 };
     v.score += indPts;
@@ -133,6 +151,13 @@ function answer(id, idx, timeout = false, pInfo = null) {
 
 io.on("connection", s => {
   s.emit("state", pub());
+  
+  // Tự động gửi bộ câu hỏi hiện tại cho MC mỗi khi mở lại tab /mc
+  s.emit("mcQuestionsLoaded", {
+    questions: S.questions,
+    globalGroupPoints: S.questions[0]?.groupPoints ?? 10,
+    globalIndPoints: S.questions[0]?.indPoints ?? 10
+  });
 
   s.on("joinPlayer", d => {
     let name = String(d?.name || "").trim().slice(0, 40);
@@ -190,7 +215,11 @@ io.on("connection", s => {
       }))
       .filter(q => q.q && q.options.length === 4 && q.options.every(Boolean) && q.answer >= 0 && q.answer <= 3);
     
+    // Lưu vĩnh viễn vào file questions.json
+    saveQuestionsToFile();
+
     s.emit("mcQuestionsSaved", { count: S.questions.length, groupPts: gPts, indPts: iPts });
+    io.emit("mcQuestionsLoaded", { questions: S.questions, globalGroupPoints: gPts, globalIndPoints: iPts });
     bc();
   });
 
@@ -204,13 +233,21 @@ io.on("connection", s => {
     S.finished = false;
     S.qi = -1;
     S.questions = [];
+    
+    // Xóa file lưu khi ấn RESET TOÀN BỘ
+    if (fs.existsSync(DATA_FILE)) {
+      try { fs.unlinkSync(DATA_FILE); } catch (e) {}
+    }
+
     S.teams.forEach(t => (t.score = 0));
     S.players.clear();
     S.inds.clear();
     S.locked.clear();
     S.active = null;
     S.endsAt = null;
+
     io.emit("gameReset");
+    io.emit("mcQuestionsLoaded", { questions: [], globalGroupPoints: 10, globalIndPoints: 10 });
     bc();
   });
 
