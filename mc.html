@@ -1,1 +1,190 @@
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MC</title><link rel="stylesheet" href="/style.css"></head><body><div class="wrap"><h1>🎤 DUCK RACE — MC</h1><div class="card"><button class="primary" onclick="start()">▶️ BẮT ĐẦU GAME</button> <button class="danger" onclick="resetGame()">🔄 RESET</button><p id="msg"></p></div><div class="card"><h2>📝 CÀI CÂU HỎI</h2><div id="qs"></div><button class="primary" onclick="add()">➕ THÊM CÂU</button> <button onclick="save()">💾 LƯU</button></div><div class="card"><h2>🏆 ĐIỂM NHÓM</h2><div id="teams" class="grid5"></div></div><div class="card"><h2>👤 ĐIỂM CÁ NHÂN</h2><div id="inds"></div></div><script src="/socket.io/socket.io.js"></script><script>const s=io();let qs=[];function add(){qs.push({q:"",options:["","","",""],answer:0,points:10});render()}function render(){qsEl=document.getElementById("qs");qsEl.innerHTML=qs.map((q,i)=>`<div class="card"><h3>Câu ${i+1}</h3><input class="qq" data-i="${i}" value="${q.q.replaceAll('"','&quot;')}" placeholder="Câu hỏi" style="width:100%;padding:12px"><div class="grid2">${q.options.map((o,j)=>`<input class="oo" data-i="${i}" data-j="${j}" value="${o.replaceAll('"','&quot;')}" placeholder="${"ABCD"[j]}" style="padding:12px">`).join("")}</div><p>Đáp án <select class="aa" data-i="${i}">${[0,1,2,3].map(j=>`<option value="${j}" ${q.answer===j?"selected":""}>${"ABCD"[j]}</option>`).join("")}</select> Điểm <input class="pp" data-i="${i}" type="number" value="${q.points}" min="1" style="width:80px"> <button class="danger" onclick="del(${i})">Xóa</button></p></div>`).join("")}function sync(){document.querySelectorAll(".qq").forEach(e=>qs[e.dataset.i].q=e.value);document.querySelectorAll(".oo").forEach(e=>qs[e.dataset.i].options[e.dataset.j]=e.value);document.querySelectorAll(".aa").forEach(e=>qs[e.dataset.i].answer=+e.value);document.querySelectorAll(".pp").forEach(e=>qs[e.dataset.i].points=+e.value||10)}function save(){sync();s.emit("mcSaveQuestions",qs)}function start(){sync();s.emit("mcSaveQuestions",qs);setTimeout(()=>s.emit("mcStart"),200)}function del(i){qs.splice(i,1);render()}function resetGame(){if(confirm("Reset game và xóa câu hỏi?"))s.emit("mcReset")}s.on("mcQuestionsSaved",d=>msg.textContent="Đã lưu "+d.count+" câu.");s.on("mcError",e=>msg.textContent="⚠️ "+e);s.on("state",x=>teams.innerHTML=x.teams.map(t=>`<div class="teamBox">${t.name}<br><b>${t.score}</b></div>`).join(""));s.on("gameFinished",d=>inds.innerHTML=d.individuals.map(p=>`<div class="card">${p.name} — Nhóm ${p.group} — <b>${p.score}</b> điểm</div>`).join(""));add()</script></div></body></html>
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MC Control</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .score-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .score-box {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .score-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+    .score-number {
+      font-weight: bold;
+      color: #ffd43b;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🎤 DUCK RACE — QUẢN TRÒ (MC)</h1>
+    
+    <div class="card">
+      <button class="primary" style="font-size: 20px; padding: 15px 30px;" onclick="start()">▶️ BẮT ĐẦU GAME</button> 
+      <button class="danger" style="font-size: 20px; padding: 15px 30px;" onclick="resetGame()">🔄 RESET</button>
+      <p id="msg" style="font-weight: bold; color: #ffd43b; margin-top: 10px;"></p>
+    </div>
+
+    <!-- DANH SÁCH THÀNH VIÊN ĐÃ VÀO CHUÔNG -->
+    <div class="card">
+      <h2>👥 THÀNH VIÊN ĐÃ VÀO CHUÔNG (<span id="playerCount">0</span> người)</h2>
+      <div id="playerList" style="display: flex; flex-wrap: wrap; gap: 10px;">
+        <p style="color: #aaa;">Đang chờ mọi người nhập tên...</p>
+      </div>
+    </div>
+
+    <!-- KHU VỰC HIỂN THỊ ĐIỂM: Ô 1 (ĐIỂM NHÓM) - Ô 2 (ĐIỂM CÁ NHÂN) -->
+    <div class="score-container">
+      <!-- Ô 1: ĐIỂM NHÓM -->
+      <div class="score-box">
+        <h2 style="color: #48dbfb; margin-top: 0;">🏆 ĐIỂM TẬP THỂ (NHÓM)</h2>
+        <div id="teamScores">
+          <p style="color: #aaa;">Chưa có dữ liệu điểm nhóm...</p>
+        </div>
+      </div>
+
+      <!-- Ô 2: ĐIỂM CÁ NHÂN -->
+      <div class="score-box">
+        <h2 style="color: #2ed573; margin-top: 0;">👤 ĐIỂM CÁ NHÂN</h2>
+        <div id="indScores" style="max-height: 350px; overflow-y: auto;">
+          <p style="color: #aaa;">Chưa có lượt trả lời nào...</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+      <h2>📝 CÀI ĐẶT CÂU HỎI</h2>
+      <div id="qs"></div>
+      <button class="primary" onclick="add()">➕ THÊM CÂU HỎI</button> 
+      <button onclick="save()">💾 LƯU CÂU HỎI</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const s = io();
+    let qs = [];
+
+    function add() {
+      qs.push({ q: "", options: ["", "", "", ""], answer: 0, points: 10 });
+      render();
+    }
+
+    function render() {
+      const qsEl = document.getElementById("qs");
+      qsEl.innerHTML = qs.map((q, i) => `
+        <div class="card" style="background: rgba(255,255,255,0.05);">
+          <h3>Câu ${i + 1}</h3>
+          <input class="qq" data-i="${i}" value="${q.q.replaceAll('"', '&quot;')}" placeholder="Nội dung câu hỏi" style="width:100%;padding:12px;margin-bottom:8px;">
+          <div class="grid2">
+            ${q.options.map((o, j) => `
+              <input class="oo" data-i="${i}" data-j="${j}" value="${o.replaceAll('"', '&quot;')}" placeholder="Đáp án ${"ABCD"[j]}" style="padding:12px;">
+            `).join("")}
+          </div>
+          <p style="margin-top: 10px;">
+            Đáp án đúng: 
+            <select class="aa" data-i="${i}">
+              ${[0,1,2,3].map(j => `<option value="${j}" ${q.answer === j ? "selected" : ""}>${"ABCD"[j]}</option>`).join("")}
+            </select>
+            Điểm: 
+            <input class="pp" data-i="${i}" type="number" value="${q.points}" min="1" style="width:80px;"> 
+            <button class="danger" onclick="del(${i})">Xóa câu này</button>
+          </p>
+        </div>
+      `).join("");
+    }
+
+    function sync() {
+      document.querySelectorAll(".qq").forEach(e => qs[e.dataset.i].q = e.value);
+      document.querySelectorAll(".oo").forEach(e => qs[e.dataset.i].options[e.dataset.j] = e.value);
+      document.querySelectorAll(".aa").forEach(e => qs[e.dataset.i].answer = +e.value);
+      document.querySelectorAll(".pp").forEach(e => qs[e.dataset.i].points = +e.value || 10);
+    }
+
+    function save() {
+      sync();
+      s.emit("mcSaveQuestions", qs);
+    }
+
+    function start() {
+      sync();
+      s.emit("mcSaveQuestions", qs);
+      setTimeout(() => s.emit("mcStart"), 200);
+    }
+
+    function del(i) {
+      qs.splice(i, 1);
+      render();
+    }
+
+    function resetGame() {
+      if (confirm("Reset game và xóa toàn bộ dữ liệu?")) s.emit("mcReset");
+    }
+
+    s.on("mcQuestionsSaved", d => msg.textContent = "✅ Đã lưu " + d.count + " câu hỏi.");
+    s.on("mcError", e => msg.textContent = "⚠️ " + e);
+
+    s.on("state", x => {
+      // 1. CẬP NHẬT Ô ĐIỂM NHÓM
+      if (x.teams) {
+        document.getElementById("teamScores").innerHTML = x.teams.map(t => `
+          <div class="score-item">
+            <span><b>${t.name}</b></span>
+            <span class="score-number">${t.score} điểm</span>
+          </div>
+        `).join("");
+      }
+
+      // 2. CẬP NHẬT DANH SÁCH THÀNH VIÊN ĐÃ VÀO CHUÔNG
+      if (x.playerList) {
+        document.getElementById("playerCount").textContent = x.playerList.length;
+        if (x.playerList.length === 0) {
+          document.getElementById("playerList").innerHTML = `<p style="color: #aaa;">Chưa có ai vào chuông...</p>`;
+        } else {
+          document.getElementById("playerList").innerHTML = x.playerList.map(p => `
+            <div style="background: #ffffff20; padding: 8px 14px; border-radius: 20px; font-weight: bold;">
+              👤 ${p.name} <span style="color: #20c779;">(Nhóm ${p.group})</span>
+            </div>
+          `).join("");
+        }
+      }
+    });
+
+    // 3. CẬP NHẬT Ô ĐIỂM CÁ NHÂN KHI CÓ KẾT QUẢ/KẾT THÚC GAME
+    s.on("gameFinished", d => {
+      if (d.individuals && d.individuals.length > 0) {
+        document.getElementById("indScores").innerHTML = d.individuals.map((p, idx) => `
+          <div class="score-item">
+            <span><b>#${idx + 1} ${p.name}</b> <small style="color:#aaa;">(Nhóm ${p.group})</small></span>
+            <span class="score-number">${p.score} điểm</span>
+          </div>
+        `).join("");
+      } else {
+        document.getElementById("indScores").innerHTML = `<p style="color: #aaa;">Chưa có cá nhân nào ghi điểm.</p>`;
+      }
+    });
+
+    add();
+  </script>
+</body>
+</html>
