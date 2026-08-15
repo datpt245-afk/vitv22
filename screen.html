@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Duck Race - Màn Hình Trình Chiếu </title>
+  <title>Duck Race - Màn Hình Trình Chiếu 2D</title>
   <link rel="stylesheet" href="/style.css">
   <style>
     body {
@@ -290,7 +290,6 @@
       100% { transform: scale(1.4) translateX(-15px); opacity: 0; }
     }
 
-    /* Đổi chia lưới cho 4 nhóm */
     .scoreboard {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -310,7 +309,7 @@
 </head>
 <body>
 
-  <!-- MÀN HÌNH LUẬT CHƠI HIỂN THỊ BAN ĐẦU -->
+  <!-- MÀN HÌNH LUẬT CHƠI -->
   <div id="rulesOverlay">
     <div class="rules-card">
       <h1 class="rules-title">📜 LUẬT CHƠI DUCK RACE</h1>
@@ -362,7 +361,6 @@
     const qs = id => document.getElementById(id);
     let currentGameState = null;
 
-    // --- CẤU HÌNH NHẠC NỀN CHILL ---
     let soundEnabled = true;
     const chillBGM = new Audio("https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3");
     chillBGM.loop = true;
@@ -372,9 +370,7 @@
       if (soundEnabled && chillBGM.paused) {
         chillBGM.play().then(() => {
           qs("audioToggleBtn").textContent = "🎵 Nhạc Chill: ĐANG PHÁT";
-        }).catch(err => {
-          console.log("Cần 1 click của người dùng để phát âm thanh");
-        });
+        }).catch(() => {});
       }
     }
 
@@ -394,11 +390,9 @@
       }
     }
 
-    window.addEventListener('click', () => {
-      startChillMusic();
-    }, { once: true });
+    window.addEventListener('click', () => { startChillMusic(); }, { once: true });
 
-    // Màu sắc đại diện cho các đội (Đã lọc bỏ nhóm 2)
+    // Cấu hình Bảng màu định danh chuẩn xác theo Số Nhóm (Group ID)
     const teamColors = {
       "1": { body: "#EF4444", wing: "#B91C1C", name: "Nhóm 1 (Đỏ)" },
       "3": { body: "#22C55E", wing: "#15803D", name: "Nhóm 3 (Lá)" },
@@ -406,7 +400,17 @@
       "5": { body: "#A855F7", wing: "#7E22CE", name: "Nhóm 5 (Tím)" }
     };
 
-    // Lắng nghe trạng thái Game từ Server
+    // Hàm nhận diện ID nhóm linh hoạt từ các dữ liệu Server gửi về
+    function getGroupId(t) {
+      if (!t) return "";
+      let idStr = String(t.id || t.group || t.key || "").trim();
+      if (!idStr && t.name) {
+        let match = t.name.match(/\d+/);
+        if (match) idStr = match[0];
+      }
+      return idStr;
+    }
+
     socket.on("state", state => {
       currentGameState = state;
       renderRace(state);
@@ -419,7 +423,7 @@
         qs("rulesOverlay").classList.remove("hidden");
       }
 
-      if (state.currentQuestion >= 0 && state.questions[state.currentQuestion]) {
+      if (state.currentQuestion >= 0 && state.questions && state.questions[state.currentQuestion]) {
         showQuestion(state.questions[state.currentQuestion], state.answerRevealed);
       } else {
         qs("screenQText").textContent = "Chưa mở câu hỏi";
@@ -459,19 +463,27 @@
     }
 
     function renderRace(x) {
-      // Lọc bỏ hoàn toàn nhóm 2
-      const activeTeams = Object.values(x.teams).filter(t => String(t.id || t.group) !== "2");
+      if (!x || !x.teams) return;
+
+      // Lấy danh sách teams từ Object hoặc Array
+      let rawTeams = Array.isArray(x.teams) ? x.teams : Object.entries(x.teams).map(([k, v]) => ({ key: k, ...v }));
+
+      // Lọc BỎ hoàn toàn Nhóm 2
+      const activeTeams = rawTeams.filter(t => getGroupId(t) !== "2");
+
       const maxScore = Math.max(...activeTeams.map(t => Number(t.score) || 0), 1);
 
       qs("screenRace").innerHTML = activeTeams.map(t => {
         const score = Number(t.score) || 0;
         const pct = score === 0 ? 2 : Math.min(85, Math.max(2, (score / Math.max(maxScore, 10)) * 85));
-        const groupKey = String(t.id || t.group);
-        const c = teamColors[groupKey] || { body: "#3B82F6", wing: "#1D4ED8", name: t.name };
+        
+        const gId = getGroupId(t);
+        // Lấy đúng màu theo số Nhóm, nếu không có thì gán mặc định tương ứng
+        const c = teamColors[gId] || { body: "#38bdf8", wing: "#0284c7" };
 
         return `
           <div class="lane-container">
-            <div class="lane-info">${t.name} — ${score} điểm</div>
+            <div class="lane-info">${t.name || ('Nhóm ' + gId)} — ${score} điểm</div>
             
             <div class="duck-wrapper" style="left: ${pct}%;">
               <div class="water-ripple"></div>
@@ -485,14 +497,21 @@
     }
 
     function renderScores(x) {
-      // Lọc bỏ nhóm 2 ở bảng điểm bên dưới
-      const activeTeams = Object.values(x.teams).filter(t => String(t.id || t.group) !== "2");
-      qs("screenScores").innerHTML = activeTeams.map(t => `
-        <div class="score-card">
-          <h4>${t.name}</h4>
-          <div class="pts">${t.score} đ</div>
-        </div>
-      `).join("");
+      if (!x || !x.teams) return;
+      let rawTeams = Array.isArray(x.teams) ? x.teams : Object.entries(x.teams).map(([k, v]) => ({ key: k, ...v }));
+      
+      // Lọc BỎ Nhóm 2 ở Bảng Điểm
+      const activeTeams = rawTeams.filter(t => getGroupId(t) !== "2");
+
+      qs("screenScores").innerHTML = activeTeams.map(t => {
+        const gId = getGroupId(t);
+        return `
+          <div class="score-card">
+            <h4>${t.name || ('Nhóm ' + gId)}</h4>
+            <div class="pts">${t.score || 0} đ</div>
+          </div>
+        `;
+      }).join("");
     }
 
     socket.on("questionOpened", x => {
@@ -511,7 +530,7 @@
     socket.on("result", x => {
       qs("screenWinner").textContent = `🎉 ${x.name} (NHÓM ${x.group}) TRẢ LỜI ĐÚNG!`;
       qs("screenStatus").textContent = `+${x.teamStep} điểm nhóm | +${x.personalPoint} điểm cá nhân`;
-      if (currentGameState && currentGameState.questions[currentGameState.currentQuestion]) {
+      if (currentGameState && currentGameState.questions && currentGameState.questions[currentGameState.currentQuestion]) {
         showQuestion(currentGameState.questions[currentGameState.currentQuestion], true);
       }
     });
