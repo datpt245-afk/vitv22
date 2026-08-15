@@ -328,7 +328,7 @@
 
       <div class="lobby-status">⏳ ĐANG CHỜ MC BẤM BẮT ĐẦU TRÒ CHƠI...</div>
       <div>
-        <button class="activate-sound-btn" onclick="startChillMusic()">🎵 Bấm vào đây để Bật Âm Thanh</button>
+        <button class="activate-sound-btn" onclick="startChillMusic(); initAudioContext();">🎵 Bấm vào đây để Bật Âm Thanh</button>
       </div>
     </div>
   </div>
@@ -363,28 +363,83 @@
 
     let soundEnabled = true;
 
-    // --- KHAI BÁO CÁC HIỆU ỨNG ÂM THANH ---
+    // --- NHẠC NỀN LOFI CHILL ---
     const chillBGM = new Audio("https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3");
     chillBGM.loop = true;
     chillBGM.volume = 0.25;
 
-    // Âm thanh khi có người bấm chuông
-    const buzzSFX = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
-    buzzSFX.volume = 0.8;
+    // --- BỘ TẠO ÂM THANH HIỆU ỨNG TRỰC TIẾP (WEB AUDIO API) ---
+    let audioCtx = null;
 
-    // Âm thanh khi trả lời ĐÚNG
-    const correctSFX = new Audio("https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3");
-    correctSFX.volume = 0.8;
+    function initAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
 
-    // Âm thanh khi trả lời SAI hoặc HẾT GIỜ
-    const wrongSFX = new Audio("https://assets.mixkit.co/active_storage/sfx/2874/2874-preview.mp3");
-    wrongSFX.volume = 0.8;
-
-    // Hàm phát hiệu ứng âm thanh an toàn
-    function playSFX(audioObj) {
+    function playSound(type) {
       if (!soundEnabled) return;
-      audioObj.currentTime = 0; // Reset về đầu để phát lại ngay lập tức
-      audioObj.play().catch(() => {});
+      initAudioContext();
+      if (!audioCtx) return;
+
+      const now = audioCtx.currentTime;
+
+      if (type === 'buzz') {
+        // --- CHUÔNG BẤM CƯỚP QUYỀN (Tiếng BÍNG KENG ngân vang) ---
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(1200, now);
+
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(2400, now);
+
+        gain.gain.setValueAtTime(0.6, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.8);
+        osc2.stop(now + 0.8);
+      } 
+      else if (type === 'correct') {
+        // --- TRẢ LỜI ĐÚNG (Tiếng Tinh Tinh 3 nốt nhạc chiến thắng) ---
+        [523.25, 659.25, 783.99].forEach((freq, i) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + i * 0.12);
+          gain.gain.setValueAtTime(0.4, now + i * 0.12);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.35);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + i * 0.12);
+          osc.stop(now + i * 0.12 + 0.35);
+        });
+      } 
+      else if (type === 'wrong') {
+        // --- TRẢ LỜI SAI (Tiếng Tè Tè báo lỗi) ---
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.setValueAtTime(110, now + 0.15);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.45);
+      }
     }
 
     function startChillMusic() {
@@ -411,7 +466,10 @@
       }
     }
 
-    window.addEventListener('click', () => { startChillMusic(); }, { once: true });
+    window.addEventListener('click', () => { 
+      initAudioContext(); 
+      startChillMusic(); 
+    }, { once: true });
 
     // Cấu hình Bảng màu định danh chuẩn xác theo Số Nhóm (Group ID)
     const teamColors = {
@@ -536,16 +594,16 @@
       startChillMusic();
     });
 
-    // --- PHÁT ÂM THANH BẤM CHUÔNG ---
+    // --- PHÁT CHUÔNG BẤM CƯỚP QUYỀN ---
     socket.on("buzzed", x => {
-      playSFX(buzzSFX);
+      playSound('buzz');
       qs("screenWinner").textContent = `🚨 ${x.name.toUpperCase()} (NHÓM ${x.group}) BẤM CHUÔNG!`;
       qs("screenStatus").textContent = "Đang có 10 giây để chọn đáp án...";
     });
 
     // --- PHÁT ÂM THANH TRẢ LỜI ĐÚNG ---
     socket.on("result", x => {
-      playSFX(correctSFX);
+      playSound('correct');
       qs("screenWinner").textContent = `🎉 ${x.name} (NHÓM ${x.group}) TRẢ LỜI ĐÚNG!`;
       qs("screenStatus").textContent = `+${x.teamStep} điểm nhóm | +${x.personalPoint} điểm cá nhân`;
       if (currentGameState && currentGameState.questions && currentGameState.questions[currentGameState.currentQuestion]) {
@@ -555,7 +613,7 @@
 
     // --- PHÁT ÂM THANH TRẢ LỜI SAI / HẾT GIỜ ---
     socket.on("wrong", x => {
-      playSFX(wrongSFX);
+      playSound('wrong');
       if (x.timedOut) {
         qs("screenWinner").textContent = `⏱️ ${x.name} (NHÓM ${x.group}) HẾT 10 GIÂY!`;
       } else {
