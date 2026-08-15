@@ -362,18 +362,38 @@
     const qs = id => document.getElementById(id);
     let currentGameState = null;
 
-    // --- CẤU HÌNH NHẠC NỀN CHILL ---
+    // --- QUẢN LÝ HỆ THỐNG ÂM THANH ---
     let soundEnabled = true;
+
+    // 1. Nhạc Chill Nền
     const chillBGM = new Audio("https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3");
     chillBGM.loop = true;
     chillBGM.volume = 0.25;
+
+    // 2. Âm thanh Trả Lời Đúng (Fanfare / Correct Sound)
+    const correctSFX = new Audio("https://cdn.pixabay.com/download/audio/2021/08/04/audio_bb630cc098.mp3?filename=success-fanfare-trumpets-6185.mp3");
+    correctSFX.volume = 0.7;
+
+    // 3. Âm thanh Bấm Chuông
+    const buzzSFX = new Audio("https://cdn.pixabay.com/download/audio/2022/03/10/audio_c8c8a73467.mp3?filename=service-bell-ring-14610.mp3");
+    buzzSFX.volume = 0.6;
+
+    // 4. Âm thanh Trả Lời Sai / Hết Giờ
+    const wrongSFX = new Audio("https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=wrong-answer-21215.mp3");
+    wrongSFX.volume = 0.5;
+
+    function playSFX(audioObj) {
+      if (!soundEnabled) return;
+      audioObj.currentTime = 0;
+      audioObj.play().catch(e => console.log("Lỗi âm thanh:", e));
+    }
 
     function startChillMusic() {
       if (soundEnabled && chillBGM.paused) {
         chillBGM.play().then(() => {
           qs("audioToggleBtn").textContent = "🎵 Nhạc Chill: ĐANG PHÁT";
         }).catch(err => {
-          console.log("Cần 1 click của người dùng để phát âm thanh");
+          console.log("Cần 1 click của người dùng để kích hoạt âm thanh tự động");
         });
       }
     }
@@ -503,11 +523,13 @@
     });
 
     socket.on("buzzed", x => {
+      playSFX(buzzSFX); // Phát tiếng chuông bấm
       qs("screenWinner").textContent = `🚨 ${x.name.toUpperCase()} (NHÓM ${x.group}) BẤM CHUÔNG!`;
       qs("screenStatus").textContent = "Đang có 10 giây để chọn đáp án...";
     });
 
     socket.on("result", x => {
+      playSFX(correctSFX); // Phát nhạc ăn mừng khi TRẢ LỜI ĐÚNG
       qs("screenWinner").textContent = `🎉 ${x.name} (NHÓM ${x.group}) TRẢ LỜI ĐÚNG!`;
       qs("screenStatus").textContent = `+${x.teamStep} điểm nhóm | +${x.personalPoint} điểm cá nhân`;
       if (currentGameState && currentGameState.questions[currentGameState.currentQuestion]) {
@@ -516,6 +538,7 @@
     });
 
     socket.on("wrong", x => {
+      playSFX(wrongSFX); // Phát âm thanh trả lời sai / hết giờ
       if (x.timedOut) {
         qs("screenWinner").textContent = `⏱️ ${x.name} (NHÓM ${x.group}) HẾT 10 GIÂY!`;
       } else {
@@ -525,6 +548,7 @@
     });
 
     socket.on("questionSkipped", () => {
+      playSFX(wrongSFX);
       qs("screenWinner").textContent = "⚠️ CẢ 5 NHÓM ĐỀU KHÔNG TRẢ LỜI ĐÚNG!";
       qs("screenStatus").textContent = "Hệ thống tự động bỏ qua và chuẩn bị chuyển sang câu tiếp theo...";
     });
@@ -535,6 +559,7 @@
     });
 
     socket.on("gameFinished", () => {
+      playSFX(correctSFX);
       qs("screenWinner").textContent = "🏆 TRÒ CHƠI KẾT THÚC!";
       qs("screenStatus").textContent = "Xin chúc mừng các cá nhân và nhóm giành chiến thắng!";
     });
