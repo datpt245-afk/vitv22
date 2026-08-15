@@ -141,32 +141,32 @@
     let isAutoSynced = false;
     const qs = id => document.getElementById(id);
 
-    // DANH SÁCH CÂU HỎI GAME 1 (GIAI ĐOẠN 30-31) DO BẠN CUNG CẤP
+    // BỘ CÂU HỎI GAME 1 ĐÃ ĐƯỢC XÁO TRỘN VỊ TRÍ ĐÁP ÁN ĐÚNG NGẪU NHIÊN NẰM Ở A, B, C, D
     const defaultQuestions = [
       {
         q: "Sự kiện diễn ra từ 1929 – 1933 bắt đầu ở các nước TBCN, ảnh hưởng lớn đến các nước thuộc địa và phụ thuộc, làm cho mọi hoạt động sản xuất đình đốn. Đó là sự kiện gì?",
-        options: ["Khủng hoảng kinh tế thế giới (1929 – 1933)", "Chiến tranh thế giới thứ hai bùng nổ (1939 – 1945)", "Khủng hoảng năng lượng thế giới (1973)", "Phong trào Cách mạng thế giới suy thoái (1918 – 1923)"],
-        answer: 0
+        options: ["Chiến tranh thế giới thứ hai bùng nổ (1939 – 1945)", "Khủng hoảng kinh tế thế giới (1929 – 1933)", "Khủng hoảng năng lượng thế giới (1973)", "Phong trào Cách mạng thế giới suy thoái (1918 – 1923)"],
+        answer: 1
       },
       {
         q: "Cuộc khủng hoảng kinh tế thế giới 1929 – 1933 bắt đầu bùng nổ đầu tiên ở quốc gia nào?",
-        options: ["Nước Mỹ", "Anh", "Pháp", "Đức"],
-        answer: 0
+        options: ["Anh", "Pháp", "Nước Mỹ", "Đức"],
+        answer: 2
       },
       {
         q: "Giai đoạn 1929 - 1933, sự kiện nào đã gây ảnh hưởng đến các nước thuộc địa và phụ thuộc, làm cho mọi hoạt động sản xuất đình đốn?",
-        options: ["Khủng hoảng kinh tế thế giới", "Chiến tranh thế giới thứ nhất kết thúc", "Khủng hoảng tài chính châu Á", "Phong trào Bãi công của giai cấp công nhân quốc tế"],
-        answer: 0
+        options: ["Chiến tranh thế giới thứ nhất kết thúc", "Khủng hoảng tài chính châu Á", "Phong trào Bãi công của giai cấp công nhân quốc tế", "Khủng hoảng kinh tế thế giới"],
+        answer: 3
       },
       {
         q: "Điền vào chỗ trống: '.... ra đời với hệ thống tổ chức thống nhất và cương lĩnh chính trị đúng đắn, nắm quyền lãnh đạo duy nhất đối với cách mạng Việt Nam'.",
-        options: ["Đảng Cộng sản Việt Nam", "Hội Việt Nam Cách mạng Thanh niên", "Mặt trận Việt Minh", "Việt Nam Quốc Dân Đảng"],
-        answer: 0
+        options: ["Hội Việt Nam Cách mạng Thanh niên", "Đảng Cộng sản Việt Nam", "Mặt trận Việt Minh", "Việt Nam Quốc Dân Đảng"],
+        answer: 1
       },
       {
         q: "Đảng Cộng sản Việt Nam được thành lập vào thời gian nào và tại đâu?",
-        options: ["Từ ngày 03/02/1930, tại Cửu Long (Hương Cảng, Trung Quốc)", "Từ ngày 03/02/1930, tại Cao Bằng (Việt Nam)", "Từ ngày 01/05/1930, tại Quảng Châu (Trung Quốc)", "Từ ngày 26/03/1931, tại Hà Nội (Việt Nam)"],
-        answer: 0
+        options: ["Từ ngày 03/02/1930, tại Cao Bằng (Việt Nam)", "Từ ngày 01/05/1930, tại Quảng Châu (Trung Quốc)", "Từ ngày 03/02/1930, tại Cửu Long (Hương Cảng, Trung Quốc)", "Từ ngày 26/03/1931, tại Hà Nội (Việt Nam)"],
+        answer: 2
       },
       {
         q: "Ai là người chủ trì Hội nghị hợp nhất các tổ chức cộng sản để thành lập Đảng Cộng sản Việt Nam đầu năm 1930?",
@@ -175,28 +175,28 @@
       },
       {
         q: "Từ ngày 14 đến ngày 31/10/1930, tại Hương Cảng (Trung Quốc), sự kiện gì đã diễn ra?",
-        options: ["Ban Chấp hành Trung ương họp Hội nghị lần thứ nhất", "Hội nghị hợp nhất các tổ chức cộng sản thành lập Đảng", "Đại hội đại biểu toàn quốc lần thứ nhất của Đảng", "Hội nghị thành lập Mặt trận Dân tộc Thống nhất"],
-        answer: 0
+        options: ["Hội nghị hợp nhất các tổ chức cộng sản thành lập Đảng", "Ban Chấp hành Trung ương họp Hội nghị lần thứ nhất", "Đại hội đại biểu toàn quốc lần thứ nhất của Đảng", "Hội nghị thành lập Mặt trận Dân tộc Thống nhất"],
+        answer: 1
       },
       {
         q: "Ai là người chủ trì Hội nghị Ban Chấp hành Trung ương Đảng tháng 10/1930 tại Hương Cảng?",
-        options: ["Trần Phú", "Nguyễn Ái Quốc", "Hà Huy Tập", "Nguyễn Văn Cừ"],
-        answer: 0
+        options: ["Nguyễn Ái Quốc", "Hà Huy Tập", "Trần Phú", "Nguyễn Văn Cừ"],
+        answer: 2
       },
       {
         q: "Tại Hội nghị Trung ương tháng 10/1930, ai đã được bầu làm Tổng Bí thư đầu tiên của Đảng?",
-        options: ["Trần Phú", "Lê Hồng Phong", "Nguyễn Văn Cừ", "Trường Chinh"],
-        answer: 0
+        options: ["Lê Hồng Phong", "Nguyễn Văn Cừ", "Trường Chinh", "Trần Phú"],
+        answer: 3
       },
       {
         q: "Hội nghị Trung ương tháng 10/1930, Đảng Cộng sản Việt Nam đổi tên thành gì?",
-        options: ["Đảng Cộng sản Đông Dương", "Đông Dương Cộng sản Đảng", "An Nam Cộng sản Đảng", "Đảng Lao động Việt Nam"],
-        answer: 0
+        options: ["Đông Dương Cộng sản Đảng", "Đảng Cộng sản Đông Dương", "An Nam Cộng sản Đảng", "Đảng Lao động Việt Nam"],
+        answer: 1
       },
       {
         q: "Đảng Cộng sản Việt Nam đổi tên thành Đảng Cộng sản Đông Dương vào thời gian nào?",
-        options: ["Tháng 10/1930", "Tháng 02/1930", "Tháng 03/1935", "Tháng 05/1941"],
-        answer: 0
+        options: ["Tháng 02/1930", "Tháng 03/1935", "Tháng 10/1930", "Tháng 05/1941"],
+        answer: 2
       },
       {
         q: "Hội nghị Trung ương tháng 10/1930 đã thông qua văn kiện quan trọng gì?",
@@ -205,13 +205,13 @@
       },
       {
         q: "Luận cương Chính trị tháng 10/1930 do ai khởi thảo?",
-        options: ["Trần Phú", "Nguyễn Ái Quốc", "Lê Hồng Phong", "Ngô Gia Tự"],
-        answer: 0
+        options: ["Nguyễn Ái Quốc", "Trần Phú", "Lê Hồng Phong", "Ngô Gia Tự"],
+        answer: 1
       },
       {
         q: "Luận cương Chính trị của Đảng Cộng sản Đông Dương được thông qua vào thời gian nào?",
-        options: ["Tháng 10/1930", "Tháng 02/1930", "Tháng 03/1935", "Tháng 05/1941"],
-        answer: 0
+        options: ["Tháng 02/1930", "Tháng 03/1935", "Tháng 05/1941", "Tháng 10/1930"],
+        answer: 3
       },
       {
         q: "Dự thảo Luận cương chính trị tháng 10/1930 được đồng chí Trần Phú viết ở đâu?",
@@ -220,38 +220,38 @@
       },
       {
         q: "Tại ngôi nhà số 90 phố Thợ Nhuộm (Hà Nội), ai là người đã viết nên Luận cương chính trị tháng 10/1930?",
-        options: ["Trần Phú", "Nguyễn Ái Quốc", "Lê Hồng Phong", "Trường Chinh"],
-        answer: 0
+        options: ["Nguyễn Ái Quốc", "Lê Hồng Phong", "Trần Phú", "Trường Chinh"],
+        answer: 2
       },
       {
         q: "Hiện nay, ngôi nhà số 90 phố Thợ Nhuộm (Hà Nội) đang được xếp hạng là loại di tích gì?",
-        options: ["Di tích lịch sử quốc gia", "Di tích lịch sử cấp Tỉnh/Thành phố", "Di tích kiến trúc nghệ thuật cấp Quốc gia", "Danh lam thắng cảnh cấp Quốc gia"],
-        answer: 0
+        options: ["Di tích lịch sử cấp Tỉnh/Thành phố", "Di tích lịch sử quốc gia", "Di tích kiến trúc nghệ thuật cấp Quốc gia", "Danh lam thắng cảnh cấp Quốc gia"],
+        answer: 1
       },
       {
         q: "Luận cương tháng 10/1930 nhấn mạnh nhiệm vụ gì?",
-        options: ["Phản phong", "Phản đế", "Cả phản phong và phản đế", "Giải phóng dân tộc"],
-        answer: 0
+        options: ["Phản đế", "Giải phóng dân tộc", "Cả phản phong và phản đế", "Phản phong"],
+        answer: 3
       },
       {
         q: "Khẩu hiệu chiến lược của Luận cương tháng 10/1930 trong việc giải quyết vấn đề ruộng đất là gì?",
-        options: ["'Người cày có ruộng'", "'Tăng gia sản xuất, giảm tức giảm phụ'", "'Tấc đất tấc vàng, ruộng đất về tay nông dân'", "'Tịch thu ruộng đất của thực dân chia cho dân nghèo'"],
-        answer: 0
+        options: ["'Tăng gia sản xuất, giảm tức giảm phụ'", "'Người cày có ruộng'", "'Tấc đất tấc vàng, ruộng đất về tay nông dân'", "'Tịch thu ruộng đất của thực dân chia cho dân nghèo'"],
+        answer: 1
       },
       {
         q: "Hạn chế lớn nhất của Luận cương chính trị tháng 10/1930 khi xác định nhiệm vụ cách mạng là gì?",
-        options: ["Chưa đặt nhiệm vụ giải phóng dân tộc lên hàng đầu mà quá nặng về đấu tranh giai cấp và cách mạng ruộng đất", "Không đánh giá đúng khả năng cách mạng của giai cấp công nhân và nông dân", "Coi trọng vai trò của tư sản dân tộc và tiểu tư sản hơn giai cấp vô sản", "Chưa xác định được phương pháp đấu tranh vũ trang để giành chính quyền"],
-        answer: 0
+        options: ["Không đánh giá đúng khả năng cách mạng của giai cấp công nhân và nông dân", "Coi trọng vai trò của tư sản dân tộc và tiểu tư sản hơn giai cấp vô sản", "Chưa đặt nhiệm vụ giải phóng dân tộc lên hàng đầu mà quá nặng về đấu tranh giai cấp và cách mạng ruộng đất", "Chưa xác định được phương pháp đấu tranh vũ trang để giành chính quyền"],
+        answer: 2
       },
       {
         q: "Luận cương T10/1930, lực lượng cách mạng được tập hợp chủ yếu là ai?",
-        options: ["Công nhân và nông dân", "Công nhân, nông dân và tư sản dân tộc", "Công nhân, nông dân và tiểu tư sản", "Tất cả các tầng lớp, giai cấp yêu nước"],
-        answer: 0
+        options: ["Công nhân, nông dân và tư sản dân tộc", "Công nhân và nông dân", "Công nhân, nông dân và tiểu tư sản", "Tất cả các tầng lớp, giai cấp yêu nước"],
+        answer: 1
       },
       {
         q: "Đỉnh cao của phong trào cách mạng 1930 - 1931 là gì? Điền vào chỗ trống câu nói của Bác Hồ: '.... bị thất bại, nhưng đã có ảnh hưởng lớn. Tinh thần anh dũng của nó luôn luôn nồng nặc trong tâm hồn quần chúng, và nó đã mở đường cho thắng lợi về sau'.",
-        options: ["Xô viết Nghệ - Tĩnh", "Khởi nghĩa Nam Kỳ", "Khởi nghĩa Bắc Sơn", "Bãi công Bến Thủy"],
-        answer: 0
+        options: ["Khởi nghĩa Nam Kỳ", "Khởi nghĩa Bắc Sơn", "Xô viết Nghệ - Tĩnh", "Bãi công Bến Thủy"],
+        answer: 2
       },
       {
         q: "Chính quyền Xô viết Nghệ - Tĩnh nở rộ và đạt đỉnh cao tại thời điểm nào?",
@@ -260,13 +260,13 @@
       },
       {
         q: "Chính quyền Xô viết Nghệ - Tĩnh là chính quyền của những giai cấp nào?",
-        options: ["Chính quyền công - nông, là chính quyền cách mạng của quần chúng lao động do Đảng lãnh đạo", "Chính quyền tư sản và tiểu tư sản, đại diện cho liên minh trí thức - thương nhân", "Chính quyền liên hiệp gồm công nhân, nông dân, địa chủ và tư sản dân tộc", "Chính quyền quân quản do các lực lượng vũ trang nhân dân nắm giữ toàn bộ thẩm quyền"],
-        answer: 0
+        options: ["Chính quyền tư sản và tiểu tư sản, đại diện cho liên minh trí thức - thương nhân", "Chính quyền liên hiệp gồm công nhân, nông dân, địa chủ và tư sản dân tộc", "Chính quyền công - nông, là chính quyền cách mạng của quần chúng lao động do Đảng lãnh đạo", "Chính quyền quân quản do các lực lượng vũ trang nhân dân nắm giữ toàn bộ thẩm quyền"],
+        answer: 2
       },
       {
         q: "Cuộc biểu tình của nông dân Hưng Nguyên bị đàn áp dữ dội, máy bay Pháp ném bom giết chết 171 người diễn ra vào ngày tháng năm nào?",
-        options: ["Ngày 12/09/1930", "Ngày 01/05/1930", "Ngày 20/10/1930", "Ngày 22/12/1930"],
-        answer: 0
+        options: ["Ngày 01/05/1930", "Ngày 12/09/1930", "Ngày 20/10/1930", "Ngày 22/12/1930"],
+        answer: 1
       },
       {
         q: "Ngày 12/9 hằng năm hiện nay được chọn làm ngày kỷ niệm gì của tỉnh Nghệ An?",
@@ -275,18 +275,18 @@
       },
       {
         q: "Ngày 12/09/1930, máy bay Pháp ném bom giết chết bao nhiêu người trong cuộc biểu tình của nông dân Hưng Nguyên?",
-        options: ["171 người", "717 người", "117 người", "177 người"],
-        answer: 0
+        options: ["717 người", "117 người", "171 người", "177 người"],
+        answer: 2
       },
       {
         q: "Ngày 18/11/1930, tổ chức tập hợp lực lượng cách mạng được Đảng chủ trương thành lập là tổ chức gì?",
-        options: ["Hội phản đế đồng minh", "Mặt trận Dân chủ Đông Dương", "Mặt trận Việt Minh", "Hội Liên hiệp Quốc dân Việt Nam"],
-        answer: 0
+        options: ["Mặt trận Dân chủ Đông Dương", "Mặt trận Việt Minh", "Hội Liên hiệp Quốc dân Việt Nam", "Hội phản đế đồng minh"],
+        answer: 3
       },
       {
         q: "Ngày 18/11 hằng năm hiện nay được Ủy ban Trung ương Mặt trận Tổ quốc Việt Nam chọn làm ngày truyền thống gì?",
-        options: ["Ngày thành lập Mặt trận Dân tộc Thống nhất Việt Nam", "Ngày thành lập Hội Liên hiệp Phụ nữ Việt Nam", "Ngày truyền thống Công nhân Việt Nam", "Ngày thành lập Đoàn Thanh niên Cộng sản Hồ Chí Minh"],
-        answer: 0
+        options: ["Ngày thành lập Hội Liên hiệp Phụ nữ Việt Nam", "Ngày thành lập Mặt trận Dân tộc Thống nhất Việt Nam", "Ngày truyền thống Công nhân Việt Nam", "Ngày thành lập Đoàn Thanh niên Cộng sản Hồ Chí Minh"],
+        answer: 1
       },
       {
         q: "Hội phản đế đồng minh được thành lập vào thời gian nào?",
