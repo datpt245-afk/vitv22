@@ -1,301 +1,140 @@
-<script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-    let state = null;
-    let isAutoSynced = false;
-    const qs = id => document.getElementById(id);
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Màn hình Trắc nghiệm - Game 1 (Ngẫu nhiên)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+    .quiz-card { background: #ffffff; width: 100%; max-width: 680px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); padding: 28px; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; color: #666; font-size: 14px; font-weight: 600; }
+    .question-box { font-size: 18px; font-weight: 700; color: #1a1a1a; margin-bottom: 24px; line-height: 1.5; min-height: 60px; }
+    .options-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 24px; }
+    .option-btn { background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 10px; padding: 14px 18px; font-size: 15px; color: #333; text-align: left; cursor: pointer; transition: all 0.2s ease; font-weight: 500; }
+    .option-btn:hover { background: #eef2ff; border-color: #6366f1; }
+    .option-btn.correct { background: #d1fae5 !important; border-color: #10b981 !important; color: #065f46; font-weight: 700; }
+    .option-btn.wrong { background: #fee2e2 !important; border-color: #ef4444 !important; color: #991b1b; }
+    .controls { display: flex; justify-content: flex-end; }
+    .next-btn { background: #4f46e5; color: #fff; border: none; border-radius: 8px; padding: 12px 24px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .next-btn:hover { background: #4338ca; }
+    .next-btn:disabled { background: #ccc; cursor: not-allowed; }
+  </style>
+</head>
+<body>
 
-    // =========================================================================
-    // 📝 1. NHẬP DANH SÁCH CÂU HỎI MỚI CỦA BẠN VÀO ĐÂY
-    // (Đáp án đúng: 0 tương ứng A, 1 tương ứng B, 2 tương ứng C, 3 tương ứng D)
-    // =========================================================================
-    const NEW_QUESTIONS_TO_ADD = [
-      {
-        q: "Thủ đô của Việt Nam là gì?",
-        options: ["Hà Nội", "TP. Hồ Chí Minh", "Đà Nẵng", "Hải Phòng"],
-        answer: 0
-      },
-      {
-        q: "1 + 1 bằng mấy?",
-        options: ["1", "2", "3", "4"],
-        answer: 1
-      }
-      // ➕ Bạn thêm các câu hỏi tiếp theo ở đây...
-    ];
+<div class="quiz-card">
+  <div class="header">
+    <span>Game 1: Giai đoạn 30 - 31</span>
+    <span id="question-tracker">Câu 1 / 30</span>
+  </div>
 
-    // =========================================================================
-    // 🔀 2. THUẬT TOÁN TRỘN NGẪU NHIÊN CÂU HỎI (Fisher-Yates Shuffle)
-    // =========================================================================
-    function shuffleArray(array) {
-      const arr = [...array];
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      return arr;
-    }
+  <div class="question-box" id="question-text">Đang tải câu hỏi...</div>
 
-    // Hàm thực hiện trộn ngân hàng câu hỏi hiện tại
-    function shuffleQuestions() {
-      if (!state || !state.questions || state.questions.length === 0) {
-        return alert("Chưa có câu hỏi nào để trộn!");
-      }
-      if (confirm("Bạn có muốn trộn ngẫu nhiên thứ tự toàn bộ câu hỏi không?")) {
-        const shuffled = shuffleArray(state.questions);
-        localStorage.setItem("duck_race_questions", JSON.stringify(shuffled));
-        socket.emit("saveQuestions", shuffled);
-        alert("🔀 Đã trộn ngẫu nhiên danh sách câu hỏi!");
-      }
-    }
+  <div class="options-grid" id="options-container"></div>
 
-    // Nạp tự động danh sách câu hỏi mới từ biến NEW_QUESTIONS_TO_ADD (nếu có)
-    function appendNewBatchQuestions() {
-      if (!NEW_QUESTIONS_TO_ADD || NEW_QUESTIONS_TO_ADD.length === 0) return;
-      
-      const currentList = state?.questions || [];
-      // Kết hợp câu hỏi cũ + câu hỏi mới và trộn ngẫu nhiên luôn
-      const combined = currentList.concat(NEW_QUESTIONS_TO_ADD);
-      const shuffledCombined = shuffleArray(combined);
+  <div class="controls">
+    <button class="next-btn" id="next-btn" onclick="nextQuestion()" disabled>Câu tiếp theo</button>
+  </div>
+</div>
 
-      localStorage.setItem("duck_race_questions", JSON.stringify(shuffledCombined));
-      socket.emit("saveQuestions", shuffledCombined);
-      
-      // Xóa bộ đệm sau khi nạp thành công
-      NEW_QUESTIONS_TO_ADD.length = 0;
-      alert("✅ Đã thêm câu hỏi mới và tự động đảo ngẫu nhiên thứ tự!");
-    }
+<script>
+const game1Data = [
+  { id: "1", question: "Sự kiện diễn ra từ 1929 – 1933 bắt đầu ở các nước TBCN, ảnh hưởng lớn đến các nước thuộc địa và phụ thuộc, làm cho mọi hoạt động sản xuất đình đốn. Đó là sự kiện gì?", options: ["Khủng hoảng kinh tế thế giới (1929 – 1933)", "Chiến tranh thế giới thứ hai bùng nổ (1939 – 1945)", "Khủng hoảng năng lượng thế giới (1973)", "Phong trào Cách mạng thế giới suy thoái (1918 – 1923)"], correctAnswer: 0 },
+  { id: "1.1", question: "Cuộc khủng hoảng kinh tế thế giới 1929 – 1933 bắt đầu bùng nổ đầu tiên ở quốc gia nào?", options: ["Nước Mỹ", "Anh", "Pháp", "Đức"], correctAnswer: 0 },
+  { id: "1.2", question: "Giai đoạn 1929 - 1933, sự kiện nào đã gây ảnh hưởng đến các nước thuộc địa và phụ thuộc, làm cho mọi hoạt động sản xuất đình đốn?", options: ["Khủng hoảng kinh tế thế giới", "Chiến tranh thế giới thứ nhất kết thúc", "Khủng hoảng tài chính châu Á", "Phong trào Bãi công của giai cấp công nhân quốc tế"], correctAnswer: 0 },
+  { id: "2", question: "Điền vào chỗ trống: '.... ra đời với hệ thống tổ chức thống nhất và cương lĩnh chính trị đúng đắn, nắm quyền lãnh đạo duy nhất đối với cách mạng Việt Nam'.", options: ["Đảng Cộng sản Việt Nam", "Hội Việt Nam Cách mạng Thanh niên", "Mặt trận Việt Minh", "Việt Nam Quốc Dân Đảng"], correctAnswer: 0 },
+  { id: "2.1", question: "Đảng Cộng sản Việt Nam được thành lập vào thời gian nào và tại đâu?", options: ["Từ ngày 03/02/1930, tại Cửu Long (Hương Cảng, Trung Quốc)", "Từ ngày 03/02/1930, tại Cao Bằng (Việt Nam)", "Từ ngày 01/05/1930, tại Quảng Châu (Trung Quốc)", "Từ ngày 26/03/1931, tại Hà Nội (Việt Nam)"], correctAnswer: 0 },
+  { id: "2.3", question: "Ai là người chủ trì Hội nghị hợp nhất các tổ chức cộng sản để thành lập Đảng Cộng sản Việt Nam đầu năm 1930?", options: ["Nguyễn Ái Quốc", "Trần Phú", "Lê Hồng Phong", "Ngô Gia Tự"], correctAnswer: 0 },
+  { id: "3", question: "Từ ngày 14 đến ngày 31/10/1930, tại Hương Cảng (Trung Quốc), sự kiện gì đã diễn ra?", options: ["Ban Chấp hành Trung ương họp Hội nghị lần thứ nhất", "Hội nghị hợp nhất các tổ chức cộng sản thành lập Đảng", "Đại hội đại biểu toàn quốc lần thứ nhất của Đảng", "Hội nghị thành lập Mặt trận Dân tộc Thống nhất"], correctAnswer: 0 },
+  { id: "3.1", question: "Ai là người chủ trì Hội nghị Ban Chấp hành Trung ương Đảng tháng 10/1930 tại Hương Cảng?", options: ["Trần Phú", "Nguyễn Ái Quốc", "Hà Huy Tập", "Nguyễn Văn Cừ"], correctAnswer: 0 },
+  { id: "3.2", question: "Tại Hội nghị Trung ương tháng 10/1930, ai đã được bầu làm Tổng Bí thư đầu tiên của Đảng?", options: ["Trần Phú", "Lê Hồng Phong", "Nguyễn Văn Cừ", "Trường Chinh"], correctAnswer: 0 },
+  { id: "4", question: "Hội nghị Trung ương tháng 10/1930, Đảng Cộng sản Việt Nam đổi tên thành gì?", options: ["Đảng Cộng sản Đông Dương", "Đông Dương Cộng sản Đảng", "An Nam Cộng sản Đảng", "Đảng Lao động Việt Nam"], correctAnswer: 0 },
+  { id: "4.1", question: "Đảng Cộng sản Việt Nam đổi tên thành Đảng Cộng sản Đông Dương vào thời gian nào?", options: ["Tháng 10/1930", "Tháng 02/1930", "Tháng 03/1935", "Tháng 05/1941"], correctAnswer: 0 },
+  { id: "5", question: "Hội nghị Trung ương tháng 10/1930 đã thông qua văn kiện quan trọng gì?", options: ["Luận cương Chính trị của Đảng Cộng sản Đông Dương", "Chánh cương tắt, Sách lược tắt của Đảng", "Tuyên ngôn độc lập của nước Việt Nam Dân chủ Cộng hòa", "Đề cương về văn hóa Việt Nam"], correctAnswer: 0 },
+  { id: "5.1", question: "Luận cương Chính trị tháng 10/1930 do ai khởi thảo?", options: ["Trần Phú", "Nguyễn Ái Quốc", "Lê Hồng Phong", "Ngô Gia Tự"], correctAnswer: 0 },
+  { id: "5.2", question: "Luận cương Chính trị của Đảng Cộng sản Đông Dương được thông qua vào thời gian nào?", options: ["Tháng 10/1930", "Tháng 02/1930", "Tháng 03/1935", "Tháng 05/1941"], correctAnswer: 0 },
+  { id: "6", question: "Dự thảo Luận cương chính trị tháng 10/1930 được đồng chí Trần Phú viết ở đâu?", options: ["Nhà số 90 phố Thợ Nhuộm, Hà Nội", "Pắc Bó, Cao Bằng", "Tân Trào, Tuyên Quang", "Nhà số 48 phố Hàng Ngang, Hà Nội"], correctAnswer: 0 },
+  { id: "6.2", question: "Tại ngôi nhà số 90 phố Thợ Nhuộm (Hà Nội), ai là người đã viết nên Luận cương chính trị tháng 10/1930?", options: ["Trần Phú", "Nguyễn Ái Quốc", "Lê Hồng Phong", "Trường Chinh"], correctAnswer: 0 },
+  { id: "6.3", question: "Hiện nay, ngôi nhà số 90 phố Thợ Nhuộm (Hà Nội) đang được xếp hạng là loại di tích gì?", options: ["Di tích lịch sử quốc gia", "Di tích lịch sử cấp Tỉnh/Thành phố", "Di tích kiến trúc nghệ thuật cấp Quốc gia", "Danh lam thắng cảnh cấp Quốc gia"], correctAnswer: 0 },
+  { id: "7", question: "Luận cương tháng 10/1930 nhấn mạnh nhiệm vụ gì?", options: ["Phản phong", "Phản đế"], correctAnswer: 0 },
+  { id: "7.1", question: "Khẩu hiệu chiến lược của Luận cương tháng 10/1930 trong việc giải quyết vấn đề ruộng đất là gì?", options: ["'Người cày có ruộng'", "'Tăng gia sản xuất, giảm tức giảm phụ'", "'Tấc đất tấc vàng, ruộng đất về tay nông dân'", "'Tịch thu ruộng đất của thực dân chia cho dân nghèo'"], correctAnswer: 0 },
+  { id: "7.2", question: "Hạn chế lớn nhất của Luận cương chính trị tháng 10/1930 khi xác định nhiệm vụ cách mạng là gì?", options: ["Chưa đặt nhiệm vụ giải phóng dân tộc lên hàng đầu mà quá nặng về đấu tranh giai cấp và cách mạng ruộng đất", "Không đánh giá đúng khả năng cách mạng của giai cấp công nhân và nông dân", "Coi trọng vai trò của tư sản dân tộc và tiểu tư sản hơn giai cấp vô sản", "Chưa xác định được phương pháp đấu tranh vũ trang để giành chính quyền"], correctAnswer: 0 },
+  { id: "8", question: "Luận cương T10/1930, lực lượng cách mạng được tập hợp chủ yếu là ai?", options: ["Công nhân và nông dân", "Công nhân, nông dân và tư sản dân tộc", "Công nhân, nông dân và tiểu tư sản", "Tất cả các tầng lớp, giai cấp yêu nước"], correctAnswer: 0 },
+  { id: "9", question: "Đỉnh cao của phong trào cách mạng 1930 - 1931 là gì? Điền vào chỗ trống câu nói của Bác Hồ: '.... bị thất bại, nhưng đã có ảnh hưởng lớn. Tinh thần anh dũng của nó luôn luôn nồng nặc trong tâm hồn quần chúng, và nó đã mở đường cho thắng lợi về sau'.", options: ["Xô viết Nghệ - Tĩnh", "Khởi nghĩa Nam Kỳ", "Khởi nghĩa Bắc Sơn", "Bãi công Bến Thủy"], correctAnswer: 0 },
+  { id: "9.1", question: "Chính quyền Xô viết Nghệ - Tĩnh nở rộ và đạt đỉnh cao tại thời điểm nào?", options: ["Tháng 09/1930", "Tháng 02/1930", "Tháng 05/1930", "Tháng 11/1930"], correctAnswer: 0 },
+  { id: "9.2", question: "Chính quyền Xô viết Nghệ - Tĩnh là chính quyền của những giai cấp nào?", options: ["Chính quyền công - nông, là chính quyền cách mạng của quần chúng lao động do Đảng lãnh đạo", "Chính quyền tư sản và tiểu tư sản, đại diện cho liên minh trí thức - thương nhân", "Chính quyền liên hiệp gồm công nhân, nông dân, địa chủ và tư sản dân tộc", "Chính quyền quân quản do các lực lượng vũ trang nhân dân nắm giữ toàn bộ thẩm quyền"], correctAnswer: 0 },
+  { id: "10", question: "Cuộc biểu tình của nông dân Hưng Nguyên bị đàn áp dữ dội, máy bay Pháp ném bom giết chết 171 người diễn ra vào ngày tháng năm nào?", options: ["Ngày 12/09/1930", "Ngày 01/05/1930", "Ngày 20/10/1930", "Ngày 22/12/1930"], correctAnswer: 0 },
+  { id: "10.1", question: "Ngày 12/9 hằng năm hiện nay được chọn làm ngày kỷ niệm gì của tỉnh Nghệ An?", options: ["Ngày Xô viết Nghệ - Tĩnh", "Ngày thành lập Đảng bộ tỉnh Nghệ An", "Ngày hội Văn hóa làng Sen", "Ngày giải phóng tỉnh Nghệ An"], correctAnswer: 0 },
+  { id: "10.2", question: "Ngày 12/09/1930, máy bay Pháp ném bom giết chết bao nhiêu người trong cuộc biểu tình của nông dân Hưng Nguyên?", options: ["171 người", "717 người", "117 người", "177 người"], correctAnswer: 0 },
+  { id: "11", question: "Ngày 18/11/1930, tổ chức tập hợp lực lượng cách mạng được Đảng chủ trương thành lập là tổ chức gì?", options: ["Hội phản đế đồng minh", "Mặt trận Dân chủ Đông Dương", "Mặt trận Việt Minh", "Hội Liên hiệp Quốc dân Việt Nam"], correctAnswer: 0 },
+  { id: "11.1", question: "Ngày 18/11 hằng năm hiện nay được Ủy ban Trung ương Mặt trận Tổ quốc Việt Nam chọn làm ngày truyền thống gì?", options: ["Ngày thành lập Mặt trận Dân tộc Thống nhất Việt Nam", "Ngày thành lập Hội Liên hiệp Phụ nữ Việt Nam", "Ngày truyền thống Công nhân Việt Nam", "Ngày thành lập Đoàn Thanh niên Cộng sản Hồ Chí Minh"], correctAnswer: 0 },
+  { id: "11.2", question: "Hội phản đế đồng minh được thành lập vào thời gian nào?", options: ["Ngày 18/11/1930", "Ngày 03/02/1930", "Ngày 26/03/1931", "Ngày 19/05/1941"], correctAnswer: 0 }
+];
 
-    // =========================================================================
-    // 🖥️ 3. RENDER VÀ XỬ LÝ HỆ THỐNG
-    // =========================================================================
-    function render(x) {
-      state = x;
+// Hàm xáo trộn mảng ngẫu nhiên (Fisher-Yates Shuffle)
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
 
-      // Đồng bộ câu hỏi từ LocalStorage nếu Server bị trống
-      if (!isAutoSynced && (!x.questions || x.questions.length === 0)) {
-        const savedLocally = localStorage.getItem("duck_race_questions");
-        if (savedLocally) {
-          try {
-            const parsed = JSON.parse(savedLocally);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              isAutoSynced = true;
-              socket.emit("saveQuestions", parsed);
-            }
-          } catch(e) {}
-        }
-      }
+// Xáo trộn danh sách câu hỏi ngay từ khi tải trang
+shuffleArray(game1Data);
 
-      // Tự động nạp batch câu hỏi mới nếu được khai báo trong code
-      if (NEW_QUESTIONS_TO_ADD.length > 0) {
-        appendNewBatchQuestions();
-      }
+let currentIndex = 0;
+let currentCorrectIndex = -1;
 
-      // Lưu trữ bản sao mới nhất vào LocalStorage
-      if (x.questions && x.questions.length > 0) {
-        localStorage.setItem("duck_race_questions", JSON.stringify(x.questions));
-      }
+function renderQuestion() {
+  const qData = game1Data[currentIndex];
+  document.getElementById("question-tracker").innerText = `Câu ${currentIndex + 1} / ${game1Data.length}`;
+  document.getElementById("question-text").innerText = qData.question;
+  document.getElementById("next-btn").disabled = true;
 
-      // Render Bảng điểm nhóm
-      qs("teams").innerHTML = Object.values(x.teams).map(t => 
-        `<tr><td><b>${t.name}</b></td><td>${t.correct}</td><td><b style="color:#38bdf8">${t.score}</b></td></tr>`
-      ).join("");
+  // Xáo trộn 4 lựa chọn đáp án của câu hỏi hiện tại
+  const rawOptions = qData.options.map((opt, i) => ({ text: opt, isCorrect: i === qData.correctAnswer }));
+  shuffleArray(rawOptions);
 
-      // Render Bảng điểm cá nhân
-      let people = [];
-      Object.entries(x.teams).forEach(([g, t]) => {
-        Object.entries(t.members).forEach(([name, v]) => {
-          people.push({ name, g, ...v });
-        });
-      });
-      people.sort((a, b) => b.score - a.score || b.correct - a.correct);
-      
-      qs("people").innerHTML = people.length ? people.map((p, i) => 
-        `<tr><td>${i + 1}</td><td>${p.name}</td><td>Nhóm ${p.g}</td><td>${p.correct}</td><td><b>${p.score}</b></td></tr>`
-      ).join("") : `<tr><td colspan="5" class="muted" style="text-align:center">Chưa có người chơi tham gia</td></tr>`;
+  const container = document.getElementById("options-container");
+  container.innerHTML = "";
 
-      // Render Ngân hàng câu hỏi (kèm nút Trộn Ngẫu Nhiên)
-      qs("bank").innerHTML = (x.questions.length ? `
-        <div style="margin-bottom: 12px;">
-          <button class="btn purple" onclick="shuffleQuestions()">🔀 Trộn Ngẫu Nhiên Thứ Tự Câu Hỏi</button>
-        </div>
-      ` : "") + (x.questions.length ? x.questions.map((q, i) => `
-        <div class="q-list-item">
-          <div>
-            <div><b>Câu ${i + 1}:</b> ${q.q}</div>
-            <span class="badge badge-ans">Đáp án đúng: ${["A", "B", "C", "D"][q.answer]}</span>
-          </div>
-          <button class="btn bad" style="padding: 4px 8px; font-size: 12px;" onclick="deleteQ(${i})">Xóa</button>
-        </div>
-      `).join("") : "<p class='muted'>Chưa có câu hỏi nào trong ngân hàng.</p>");
+  rawOptions.forEach((opt, idx) => {
+    if (opt.isCorrect) currentCorrectIndex = idx;
+    const btn = document.createElement("button");
+    btn.className = "option-btn";
+    btn.innerText = `${String.fromCharCode(65 + idx)}. ${opt.text}`;
+    btn.onclick = () => selectOption(idx, btn);
+    container.appendChild(btn);
+  });
+}
 
-      // Render Đường đua vịt
-      const icons = ["🟥", "🟦", "🟩", "🟨", "🟪"];
-      const colors = ["red", "blue", "green", "yellow", "purple"];
-      qs("race").innerHTML = Object.values(x.teams).map((t, i) => {
-        const pct = Math.min(100, Math.max(0, (Number(t.score) || 0) * 10));
-        return `
-          <div class="lane">
-            <div class="n">${icons[i]} ${t.name} — ${t.score} đ</div>
-            <div class="line"></div>
-            <div class="swimDuck ${colors[i]}" style="left: calc(${pct}% - 30px)">
-              <span class="body">🦆</span>
-              <span class="wave">〰️〰️</span>
-            </div>
-            <div class="finish">🏁</div>
-          </div>
-        `;
-      }).join("");
+function selectOption(selectedIndex, selectedBtn) {
+  const buttons = document.querySelectorAll(".option-btn");
+  buttons.forEach(btn => btn.disabled = true);
 
-      // Render Link kết nối 5 nhóm
-      qs("links").innerHTML = [1, 2, 3, 4, 5].map(i => 
-        `<p style="margin: 6px 0; font-size: 13px;">🔔 <b>Nhóm ${i}:</b> <code>${location.origin}/?group=${i}</code></p>`
-      ).join("");
+  if (selectedIndex === currentCorrectIndex) {
+    selectedBtn.classList.add("correct");
+  } else {
+    selectedBtn.classList.add("wrong");
+    buttons[currentCorrectIndex].classList.add("correct");
+  }
 
-      // Cập nhật thông tin câu hỏi hiện tại
-      if (x.currentQuestion >= 0 && x.questions[x.currentQuestion]) {
-        showQuestion(x.questions[x.currentQuestion], x.answerRevealed);
-      } else {
-        qs("qbox").textContent = "Chưa mở câu hỏi";
-        qs("opts").innerHTML = "";
-      }
-      updateNextButton();
-    }
+  document.getElementById("next-btn").disabled = false;
+}
 
-    function showQuestion(q, reveal = false) {
-      qs("qbox").textContent = `Câu ${state.currentQuestion + 1}: ${q.q}`;
-      const labels = ["A", "B", "C", "D"];
-      qs("opts").innerHTML = q.options.map((o, i) => `
-        <div class="opt ${reveal && i === q.answer ? 'correct' : ''}">
-          ${labels[i]}. ${o} ${reveal && i === q.answer ? ' ✓' : ''}
-        </div>
-      `).join("");
-    }
+function nextQuestion() {
+  if (currentIndex < game1Data.length - 1) {
+    currentIndex++;
+    renderQuestion();
+  } else {
+    alert("Bạn đã hoàn thành tất cả các câu hỏi!");
+  }
+}
 
-    function updateNextButton() {
-      if (!state) return;
-      const nextIdx = state.currentQuestion + 1;
-      const btn = qs("nextBtn");
-      
-      if (!state.questions.length) {
-        btn.textContent = "▶️ MỞ CÂU ĐẦU TIÊN";
-        btn.disabled = true;
-      } else if (nextIdx >= state.questions.length) {
-        btn.textContent = "🏁 ĐÃ HẾT CÂU HỎI";
-        btn.disabled = true;
-      } else {
-        btn.textContent = state.currentQuestion < 0 ? "▶️ MỞ CÂU ĐẦU TIÊN" : `▶️ MỞ CÂU TIẾP THEO (${nextIdx + 1})`;
-        btn.disabled = false;
-      }
-    }
+// Chạy lần đầu khi mở trang
+renderQuestion();
+</script>
 
-    function nextQuestion() {
-      if (!state || !state.questions.length) return alert("Vui lòng nhập câu hỏi trước.");
-      socket.emit("nextQuestion");
-    }
-
-    function addQuestion() {
-      const q = qs("newQ").value.trim();
-      const opts = [0, 1, 2, 3].map(i => qs("a" + i).value.trim());
-      const ans = Number(qs("correctAns").value);
-
-      if (!q || opts.some(x => !x)) return alert("Vui lòng nhập đầy đủ câu hỏi và 4 đáp án.");
-
-      const updatedList = (state?.questions || []).concat([{ q, options: opts, answer: ans }]);
-      
-      localStorage.setItem("duck_race_questions", JSON.stringify(updatedList));
-      socket.emit("saveQuestions", updatedList);
-
-      ["newQ", "a0", "a1", "a2", "a3"].forEach(id => qs(id).value = "");
-    }
-
-    function deleteQ(i) {
-      if (!confirm("Bạn có chắc chắn muốn xóa câu hỏi này?")) return;
-      const updatedList = state.questions.slice();
-      updatedList.splice(i, 1);
-      
-      localStorage.setItem("duck_race_questions", JSON.stringify(updatedList));
-      socket.emit("saveQuestions", updatedList);
-    }
-
-    function exportQuestions() {
-      if (!state || !state.questions.length) return alert("Chưa có câu hỏi nào để xuất file.");
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.questions, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `cau_hoi_duck_race_${Date.now()}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-    }
-
-    function importQuestions(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          const imported = JSON.parse(e.target.result);
-          if (Array.isArray(imported)) {
-            const shuffled = shuffleArray(imported);
-            localStorage.setItem("duck_race_questions", JSON.stringify(shuffled));
-            socket.emit("saveQuestions", shuffled);
-            alert("Nạp và trộn bộ câu hỏi thành công!");
-          } else {
-            alert("File không đúng định dạng danh sách câu hỏi.");
-          }
-        } catch(err) {
-          alert("Lỗi đọc file JSON: " + err.message);
-        }
-      };
-      reader.readAsText(file);
-    }
-
-    function resetBuzz() { socket.emit("resetBuzz"); }
-    function resetGame() {
-      if (confirm("Hành động này sẽ xoá toàn bộ điểm số và thành viên. Bạn có chắc chắn?")) {
-        socket.emit("resetGame");
-      }
-    }
-    function saveScore() {
-      socket.emit("setScoring", {
-        teamStep: Number(qs("teamStep").value),
-        personalPoint: Number(qs("personalPoint").value)
-      });
-      alert("Đã cập nhật cấu hình tính điểm!");
-    }
-
-    // Lắng nghe các sự kiện từ Server
-    socket.on("state", render);
-    
-    socket.on("questionOpened", x => {
-      qs("winner").textContent = `❓ CÂU HỎI SỐ ${x.index + 1} ĐÃ MỞ!`;
-      qs("status").textContent = "Chuông đã bật. Đang chờ người chơi giành quyền trả lời...";
-    });
-
-    socket.on("buzzed", x => {
-      qs("winner").textContent = `🚨 ${x.name.toUpperCase()} (NHÓM ${x.group}) GIÀNH QUYỀN!`;
-      qs("status").textContent = "Thành viên có 10 giây để chọn đáp án trên màn hình điện thoại...";
-    });
-
-    socket.on("result", x => {
-      qs("winner").textContent = `✅ ${x.name} (NHÓM ${x.group}) TRẢ LỜI ĐÚNG!`;
-      qs("status").textContent = `Cộng +${x.teamStep} điểm nhóm và +${x.personalPoint} điểm cá nhân. Chuẩn bị chuyển câu...`;
-    });
-
-    socket.on("wrong", x => {
-      qs("winner").textContent = x.timedOut 
-        ? `⏱️ ${x.name} (NHÓM ${x.group}) HẾT 10 GIÂY!` 
-        : `❌ ${x.name} (NHÓM ${x.group}) TRẢ LỜI SAI!`;
-      qs("status").textContent = `Nhóm ${x.group} đã bị khóa lượt ở câu này. Chuông đã mở cho các nhóm còn lại cướp quyền!`;
-    });
-
-    socket.on("questionSkipped", () => {
-      qs("winner").textContent = "⚠️ CẢ 5 NHÓM ĐỀU TRẢ LỜI SAI!";
-      qs("status").textContent = "Hệ thống tự động bỏ qua và chuẩn bị chuyển sang câu hỏi tiếp theo...";
-    });
-
-    socket.on("resetBuzz", () => {
-      qs("winner").textContent = "🔔 CHUÔNG ĐÃ ĐƯỢC MỞ LẠI!";
-      qs("status").textContent = "Các nhóm chưa bị khóa lượt có thể tiếp tục bấm chuông.";
-    });
-  </script>
+</body>
+</html>
