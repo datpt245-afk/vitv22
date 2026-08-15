@@ -20,7 +20,7 @@
       position: relative;
     }
 
-    /* --- MÀN HÌNH LUẬT CHƠI --- */
+    /* --- MÀN HÌNH LUẬT CHƠI (LOBBY OVERLAY) --- */
     #rulesOverlay {
       position: fixed;
       top: 0;
@@ -80,6 +80,7 @@
       color: #fbbf24;
     }
     
+    /* Bảng cộng điểm */
     .point-box {
       background: #1e3a8a;
       border: 1px dashed #60a5fa;
@@ -106,6 +107,23 @@
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.6; transform: scale(0.98); }
     }
+    .activate-sound-btn {
+      margin-top: 15px;
+      background: #0284c7;
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4);
+      transition: all 0.2s ease;
+    }
+    .activate-sound-btn:hover {
+      background: #0369a1;
+      transform: scale(1.05);
+    }
 
     /* GIAO DIỆN CHÍNH */
     .status-banner {
@@ -127,6 +145,28 @@
       font-size: 18px;
       color: #94a3b8;
       margin-top: 5px;
+    }
+    
+    .audio-control-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      border: 1px solid #38bdf8;
+      padding: 10px 18px;
+      border-radius: 30px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 100;
+      backdrop-filter: blur(5px);
+      transition: all 0.2s ease;
+    }
+    .audio-control-btn:hover {
+      background: #0284c7;
+      color: #fff;
+      transform: scale(1.05);
     }
 
     .q-card {
@@ -253,7 +293,7 @@
 
     .scoreboard {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 12px;
       margin-top: 20px;
     }
@@ -270,12 +310,12 @@
 </head>
 <body>
 
-  <!-- MÀN HÌNH LUẬT CHƠI -->
+  <!-- MÀN HÌNH LUẬT CHƠI HIỂN THỊ BAN ĐẦU -->
   <div id="rulesOverlay">
     <div class="rules-card">
       <h1 class="rules-title">📜 LUẬT CHƠI DUCK RACE</h1>
       <ol class="rules-list">
-        <li><strong>Tham gia:</strong> Tất cả các thành viên truy cập vào liên kết theo đúng tên nhóm của bản thân (Dành cho Nhóm 1, 3, 4, 5).</li>
+        <li><strong>Tham gia:</strong> Tất cả các thành viên truy cập vào liên kết theo đúng tên nhóm của bản thân.</li>
         <li><strong>Giành quyền trả lời:</strong> Khi trò chơi bắt đầu, người chơi đọc câu hỏi và nhanh tay <strong>ấn chuông</strong>. Người bấm nhanh nhất sẽ giành quyền trả lời để mang về điểm <strong>CÁ NHÂN + NHÓM</strong>.</li>
         <li><strong>Chuyển quyền:</strong> Nếu người đầu tiên trả lời sai, quyền trả lời sẽ được chuyển tiếp sang người tiếp theo bấm chuông.</li>
         <li><strong>Kết thúc & Bảng điểm:</strong> Khi trò chơi kết thúc, hệ thống sẽ tính điểm CÁ NHÂN (dựa trên chú vịt chạy xa nhất) và tổng điểm các thành viên để tính điểm NHÓM:</li>
@@ -288,10 +328,15 @@
       </div>
 
       <div class="lobby-status">⏳ ĐANG CHỜ MC BẤM BẮT ĐẦU TRÒ CHƠI...</div>
+      <div>
+        <button class="activate-sound-btn" onclick="startChillMusic()">🎵 Bấm vào đây để Bật Âm Thanh Chill</button>
+      </div>
     </div>
   </div>
 
   <div class="screen-container">
+    <button id="audioToggleBtn" class="audio-control-btn" onclick="toggleAudio()">🎵 Nhạc Chill: BẬT</button>
+
     <div class="status-banner">
       <div id="screenWinner" class="winner-title">🦆 ĐƯỜNG ĐUA VỊT 2D SẴN SÀNG!</div>
       <div id="screenStatus" class="status-sub">Đang chờ MC bắt đầu trò chơi...</div>
@@ -317,35 +362,66 @@
     const qs = id => document.getElementById(id);
     let currentGameState = null;
 
-    const teamColors = {
-      "1": { body: "#EF4444", wing: "#B91C1C" },
-      "3": { body: "#22C55E", wing: "#15803D" },
-      "4": { body: "#FACC15", wing: "#CA8A04" },
-      "5": { body: "#A855F7", wing: "#7E22CE" }
-    };
+    // --- CẤU HÌNH NHẠC NỀN CHILL ---
+    let soundEnabled = true;
+    const chillBGM = new Audio("https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3");
+    chillBGM.loop = true;
+    chillBGM.volume = 0.25;
 
-    function getGroupId(t) {
-      if (!t) return "";
-      let idStr = String(t.id || t.group || t.key || "").trim();
-      if (!idStr && t.name) {
-        let match = t.name.match(/\d+/);
-        if (match) idStr = match[0];
+    function startChillMusic() {
+      if (soundEnabled && chillBGM.paused) {
+        chillBGM.play().then(() => {
+          qs("audioToggleBtn").textContent = "🎵 Nhạc Chill: ĐANG PHÁT";
+        }).catch(err => {
+          console.log("Cần 1 click của người dùng để phát âm thanh");
+        });
       }
-      return idStr;
     }
 
+    function toggleAudio() {
+      soundEnabled = !soundEnabled;
+      const btn = qs("audioToggleBtn");
+      if (soundEnabled) {
+        chillBGM.play();
+        btn.textContent = "🎵 Nhạc Chill: ĐANG PHÁT";
+        btn.style.background = "rgba(56, 189, 248, 0.2)";
+        btn.style.color = "#38bdf8";
+      } else {
+        chillBGM.pause();
+        btn.textContent = "🔇 Nhạc Chill: TẮT";
+        btn.style.background = "#64748b";
+        btn.style.color = "#fff";
+      }
+    }
+
+    window.addEventListener('click', () => {
+      startChillMusic();
+    }, { once: true });
+
+    // Màu sắc đại diện cho 5 đội vịt 2D
+    const teamColors = [
+      { body: "#EF4444", wing: "#B91C1C", name: "Nhóm 1 (Đỏ)" },
+      { body: "#3B82F6", wing: "#1D4ED8", name: "Nhóm 2 (Xanh)" },
+      { body: "#22C55E", wing: "#15803D", name: "Nhóm 3 (Lá)" },
+      { body: "#FACC15", wing: "#CA8A04", name: "Nhóm 4 (Vàng)" },
+      { body: "#A855F7", wing: "#7E22CE", name: "Nhóm 5 (Tím)" }
+    ];
+
+    // Lắng nghe trạng thái Game từ Server
     socket.on("state", state => {
       currentGameState = state;
       renderRace(state);
       renderScores(state);
 
+      // Nếu trò chơi đã bắt đầu hoặc đang mở câu hỏi -> Ẩn bảng luật chơi
       if (state.started || state.currentQuestion >= 0) {
         qs("rulesOverlay").classList.add("hidden");
+        startChillMusic();
       } else {
         qs("rulesOverlay").classList.remove("hidden");
       }
 
-      if (state.currentQuestion >= 0 && state.questions && state.questions[state.currentQuestion]) {
+      if (state.currentQuestion >= 0 && state.questions[state.currentQuestion]) {
         showQuestion(state.questions[state.currentQuestion], state.answerRevealed);
       } else {
         qs("screenQText").textContent = "Chưa mở câu hỏi";
@@ -353,8 +429,10 @@
       }
     });
 
+    // Bắt sự kiện MC ấn Bắt đầu trò chơi
     socket.on("gameStarted", () => {
       qs("rulesOverlay").classList.add("hidden");
+      startChillMusic();
     });
 
     function showQuestion(q, reveal = false) {
@@ -384,22 +462,17 @@
     }
 
     function renderRace(x) {
-      if (!x || !x.teams) return;
-      let rawTeams = Array.isArray(x.teams) ? x.teams : Object.entries(x.teams).map(([k, v]) => ({ key: k, ...v }));
+      const teams = Object.values(x.teams);
+      const maxScore = Math.max(...teams.map(t => Number(t.score) || 0), 1);
 
-      const activeTeams = rawTeams.filter(t => getGroupId(t) !== "2");
-      const maxScore = Math.max(...activeTeams.map(t => Number(t.score) || 0), 1);
-
-      qs("screenRace").innerHTML = activeTeams.map(t => {
+      qs("screenRace").innerHTML = teams.map((t, i) => {
         const score = Number(t.score) || 0;
         const pct = score === 0 ? 2 : Math.min(85, Math.max(2, (score / Math.max(maxScore, 10)) * 85));
-        
-        const gId = getGroupId(t);
-        const c = teamColors[gId] || { body: "#38bdf8", wing: "#0284c7" };
+        const c = teamColors[i] || teamColors[0];
 
         return `
           <div class="lane-container">
-            <div class="lane-info">${t.name || ('Nhóm ' + gId)} — ${score} điểm</div>
+            <div class="lane-info">${t.name} — ${score} điểm</div>
             
             <div class="duck-wrapper" style="left: ${pct}%;">
               <div class="water-ripple"></div>
@@ -413,20 +486,12 @@
     }
 
     function renderScores(x) {
-      if (!x || !x.teams) return;
-      let rawTeams = Array.isArray(x.teams) ? x.teams : Object.entries(x.teams).map(([k, v]) => ({ key: k, ...v }));
-      
-      const activeTeams = rawTeams.filter(t => getGroupId(t) !== "2");
-
-      qs("screenScores").innerHTML = activeTeams.map(t => {
-        const gId = getGroupId(t);
-        return `
-          <div class="score-card">
-            <h4>${t.name || ('Nhóm ' + gId)}</h4>
-            <div class="pts">${t.score || 0} đ</div>
-          </div>
-        `;
-      }).join("");
+      qs("screenScores").innerHTML = Object.values(x.teams).map(t => `
+        <div class="score-card">
+          <h4>${t.name}</h4>
+          <div class="pts">${t.score} đ</div>
+        </div>
+      `).join("");
     }
 
     socket.on("questionOpened", x => {
@@ -434,6 +499,7 @@
       qs("screenWinner").textContent = `❓ CÂU HỎI SỐ ${x.index + 1}`;
       qs("screenStatus").textContent = "Các nhóm nhanh tay bấm chuông giành quyền trả lời!";
       showQuestion(x.question, false);
+      startChillMusic();
     });
 
     socket.on("buzzed", x => {
@@ -444,7 +510,7 @@
     socket.on("result", x => {
       qs("screenWinner").textContent = `🎉 ${x.name} (NHÓM ${x.group}) TRẢ LỜI ĐÚNG!`;
       qs("screenStatus").textContent = `+${x.teamStep} điểm nhóm | +${x.personalPoint} điểm cá nhân`;
-      if (currentGameState && currentGameState.questions && currentGameState.questions[currentGameState.currentQuestion]) {
+      if (currentGameState && currentGameState.questions[currentGameState.currentQuestion]) {
         showQuestion(currentGameState.questions[currentGameState.currentQuestion], true);
       }
     });
@@ -459,7 +525,7 @@
     });
 
     socket.on("questionSkipped", () => {
-      qs("screenWinner").textContent = "⚠️ TẤT CẢ CÁC NHÓM ĐỀU KHÔNG TRẢ LỜI ĐÚNG!";
+      qs("screenWinner").textContent = "⚠️ CẢ 5 NHÓM ĐỀU KHÔNG TRẢ LỜI ĐÚNG!";
       qs("screenStatus").textContent = "Hệ thống tự động bỏ qua và chuẩn bị chuyển sang câu tiếp theo...";
     });
 
