@@ -35,6 +35,7 @@ let game = {
 };
 
 let autoNextTimer = null; // Bộ đếm tự động chuyển câu
+let answerTimeout = null;  // 🔴 THÊM: Bộ đếm 5 giây cho người vừa bấm chuông
 
 function loadQuestions() {
   try {
@@ -72,6 +73,7 @@ function snapshot() {
 // Hàm kích hoạt chuyển câu tiếp theo
 function triggerNextQuestion() {
   if (autoNextTimer) clearTimeout(autoNextTimer);
+  if (answerTimeout) clearTimeout(answerTimeout); // 🔴 Hủy timer trả lời nếu có
 
   if (game.currentQuestion + 1 < game.questions.length) {
     game.currentQuestion++;
@@ -98,6 +100,29 @@ function scheduleNextQuestion(delayMs = 5000) {
   autoNextTimer = setTimeout(() => {
     triggerNextQuestion();
   }, delayMs);
+}
+
+// 🔴 THÊM: Hàm xử lý khi người chơi bị quá 5s không trả lời (tính là Sai)
+function handleTimeout(name, group) {
+  const g = String(group);
+  game.lockedGroups.push(g);
+  game.activeResponder = null;
+
+  io.emit("wrong", {
+    name,
+    group: g,
+    timedOut: true
+  });
+
+  // Nếu cả 5 nhóm đều bị khóa -> Tự động hiện đáp án và chuyển câu sau 5s
+  if (game.lockedGroups.length >= 5) {
+    game.questionOpen = false;
+    game.answerRevealed = true;
+    io.emit("questionSkipped");
+    scheduleNextQuestion(5000);
+  }
+
+  io.emit("state", snapshot());
 }
 
 io.on("connection", socket => {
@@ -130,7 +155,6 @@ io.on("connection", socket => {
     io.emit("state", snapshot());
   });
 
-  // MC chỉ cần bấm "BẮT ĐẦU TRÒ CHƠI" 1 lần duy nhất ở đây
   socket.on("nextQuestion", () => {
     triggerNextQuestion();
   });
@@ -149,11 +173,22 @@ io.on("connection", socket => {
     });
 
     io.emit("state", snapshot());
+
+    // 🔴 BẮT ĐẦU ĐẾM NGƯỢC 5 GIÂY: Nếu quá 5s chưa gửi submitAnswer thì bị phạt Sai
+    if (answerTimeout) clearTimeout(answerTimeout);
+    answerTimeout = setTimeout(() => {
+      if (game.activeResponder && game.activeResponder.group === g) {
+        handleTimeout(name, g);
+      }
+    }, 5000);
   });
 
   socket.on("submitAnswer", ({ index, name, group }) => {
     const g = String(group);
     if (!game.activeResponder || game.activeResponder.group !== g) return;
+
+    // 🔴 HỦY TIMER 5 GIÂY khi người chơi đã bấm chọn đáp án kịp thời
+    if (answerTimeout) clearTimeout(answerTimeout);
 
     const currentQ = game.questions[game.currentQuestion];
     const isCorrect = currentQ && index === currentQ.answer;
@@ -186,7 +221,7 @@ io.on("connection", socket => {
       scheduleNextQuestion(5000);
 
     } else {
-      // Trả lời SAI / HẾT GIỜ
+      // Trả lời SAI
       game.lockedGroups.push(g);
       game.activeResponder = null;
 
@@ -209,6 +244,7 @@ io.on("connection", socket => {
   });
 
   socket.on("resetBuzz", () => {
+    if (answerTimeout) clearTimeout(answerTimeout);
     game.activeResponder = null;
     io.emit("resetBuzz");
     io.emit("state", snapshot());
@@ -222,6 +258,8 @@ io.on("connection", socket => {
 
   socket.on("resetGame", () => {
     if (autoNextTimer) clearTimeout(autoNextTimer);
+    if (answerTimeout) clearTimeout(answerTimeout);
+    
     Object.keys(game.teams).forEach(g => {
       game.teams[g] = { name: `Nhóm ${g}`, score: 0, correct: 0, members: {} };
     });
