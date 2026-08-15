@@ -1,218 +1,241 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*" }
-});
+const io = new Server(server);
 
-// Cho phép Express phục vụ trực tiếp các file HTML/CSS ở thư mục gốc
+const PORT = process.env.PORT || 3000;
+const DATA_FILE = path.join(__dirname, "questions.json");
+
+app.use(express.static(path.join(__dirname, "public")));
 app.use(express.static(__dirname));
 
-const questions = [
-  {
-    q: "Thủ đô của Việt Nam là gì?",
-    options: ["Đà Nẵng", "Hà Nội", "TP. Hồ Chí Minh", "Cần Thơ"],
-    answer: 1
-  },
-  {
-    q: "Số nào sau đây là số nguyên tố?",
-    options: ["4", "6", "7", "9"],
-    answer: 2
-  }
-];
-
-let gameState = {
-  started: false,
-  currentQuestion: -1,
-  answerRevealed: false,
-  buzzedTeam: null,
-  blockedTeams: [],
-  teamStep: 2,         // Điểm nhóm mặc định
-  personalPoint: 1,    // Điểm cá nhân mặc định
+let game = {
   teams: {
-    "1": { id: "1", name: "Nhóm 1", score: 0, correct: 0, members: {} },
-    "2": { id: "2", name: "Nhóm 2", score: 0, correct: 0, members: {} },
-    "3": { id: "3", name: "Nhóm 3", score: 0, correct: 0, members: {} },
-    "4": { id: "4", name: "Nhóm 4", score: 0, correct: 0, members: {} },
-    "5": { id: "5", name: "Nhóm 5", score: 0, correct: 0, members: {} }
+    1: { name: "Nhóm 1", score: 0, correct: 0, members: {} },
+    2: { name: "Nhóm 2", score: 0, correct: 0, members: {} },
+    3: { name: "Nhóm 3", score: 0, correct: 0, members: {} },
+    4: { name: "Nhóm 4", score: 0, correct: 0, members: {} },
+    5: { name: "Nhóm 5", score: 0, correct: 0, members: {} }
   },
-  questions: questions
+  questions: [],
+  currentQuestion: -1,
+  questionOpen: false,
+  activeResponder: null,
+  lockedGroups: [],
+  scoring: {
+    teamStep: 2,
+    personalPoint: 1
+  },
+  answerRevealed: false
 };
 
-let questionTimer = null;
+let autoNextTimer = null; // Bộ đếm tự động chuyển câu
 
-io.on("connection", (socket) => {
-  // Gửi trạng thái hiện tại ngay khi client kết nối
-  socket.emit("state", gameState);
-
-  // --- 1. LẮNG NGHE LỆNH TỪ MC: LƯU / THÊM / XÓA CÂU HỎI ---
-  socket.on("saveQuestions", (newQuestions) => {
-    gameState.questions = newQuestions;
-    io.emit("state", gameState); // Đồng bộ lại toàn bộ client
-  });
-
-  // --- 2. LẮNG NGHE LỆNH TỪ MC: CHUYỂN CÂU HỎI TIẾP THEO ---
-  socket.on("nextQuestion", () => {
-    const nextIndex = gameState.currentQuestion + 1;
-    if (nextIndex < gameState.questions.length) {
-      gameState.currentQuestion = nextIndex;
-      gameState.started = true; // Tự động bật started để đóng Rules Overlay trên Screen
-      gameState.answerRevealed = false;
-      gameState.buzzedTeam = null;
-      gameState.blockedTeams = [];
-      clearTimeout(questionTimer);
-
-      io.emit("questionOpened", {
-        index: nextIndex,
-        question: gameState.questions[nextIndex]
-      });
-      io.emit("state", gameState);
+function loadQuestions() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE, "utf8");
+      game.questions = JSON.parse(raw);
+      console.log(`[DATA] Đã tải ${game.questions.length} câu hỏi.`);
     }
-  });
+  } catch (err) {
+    game.questions = [];
+  }
+}
 
-  // MC mở câu hỏi theo index cụ thể
-  socket.on("openQuestion", (index) => {
-    if (index >= 0 && index < gameState.questions.length) {
-      gameState.currentQuestion = index;
-      gameState.started = true;
-      gameState.answerRevealed = false;
-      gameState.buzzedTeam = null;
-      gameState.blockedTeams = [];
-      clearTimeout(questionTimer);
+function saveQuestionsToFile() {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(game.questions, null, 2), "utf8");
+  } catch (err) {}
+}
 
-      io.emit("questionOpened", {
-        index: index,
-        question: gameState.questions[index]
-      });
-      io.emit("state", gameState);
-    }
-  });
+loadQuestions();
 
-  // MC Bắt đầu trò chơi
-  socket.on("startGame", () => {
-    gameState.started = true;
-    io.emit("gameStarted");
-    io.emit("state", gameState);
-  });
+function snapshot() {
+  return {
+    teams: game.teams,
+    questions: game.questions,
+    currentQuestion: game.currentQuestion,
+    questionOpen: game.questionOpen,
+    activeResponder: game.activeResponder,
+    lockedGroups: game.lockedGroups,
+    scoring: game.scoring,
+    answerRevealed: game.answerRevealed
+  };
+}
 
-  // MC Thiết lập điểm số
-  socket.on("setScoring", (data) => {
-    if (data.teamStep) gameState.teamStep = data.teamStep;
-    if (data.personalPoint) gameState.personalPoint = data.personalPoint;
-    io.emit("state", gameState);
-  });
+// Hàm kích hoạt chuyển câu tiếp theo
+function triggerNextQuestion() {
+  if (autoNextTimer) clearTimeout(autoNextTimer);
 
-  // MC Reset trò chơi
-  socket.on("resetGame", () => {
-    gameState.currentQuestion = -1;
-    gameState.started = false;
-    gameState.answerRevealed = false;
-    gameState.buzzedTeam = null;
-    gameState.blockedTeams = [];
-    Object.keys(gameState.teams).forEach(k => {
-      gameState.teams[k].score = 0;
-      gameState.teams[k].correct = 0;
-      gameState.teams[k].members = {};
+  if (game.currentQuestion + 1 < game.questions.length) {
+    game.currentQuestion++;
+    game.questionOpen = true;
+    game.activeResponder = null;
+    game.lockedGroups = [];
+    game.answerRevealed = false;
+
+    io.emit("questionOpened", {
+      index: game.currentQuestion,
+      question: game.questions[game.currentQuestion]
     });
-    io.emit("state", gameState);
-  });
+    io.emit("state", snapshot());
+  } else {
+    game.questionOpen = false;
+    io.emit("gameFinished");
+    io.emit("state", snapshot());
+  }
+}
 
-  // --- 3. XỬ LÝ BẤM CHUÔNG & TRẢ LỜI ---
-  socket.on("buzz", (data) => {
-    if (!gameState.buzzedTeam && !gameState.blockedTeams.includes(String(data.group))) {
-      gameState.buzzedTeam = data;
-      io.emit("buzzed", data);
-      io.emit("state", gameState);
+// Hàm đếm ngược 5s để tự chuyển câu
+function scheduleNextQuestion(delayMs = 5000) {
+  if (autoNextTimer) clearTimeout(autoNextTimer);
+  autoNextTimer = setTimeout(() => {
+    triggerNextQuestion();
+  }, delayMs);
+}
 
-      clearTimeout(questionTimer);
-      questionTimer = setTimeout(() => {
-        if (gameState.buzzedTeam) {
-          const failedTeam = gameState.buzzedTeam;
-          gameState.blockedTeams.push(String(failedTeam.group));
-          gameState.buzzedTeam = null;
+io.on("connection", socket => {
+  socket.emit("state", snapshot());
 
-          io.emit("wrong", {
-            name: failedTeam.name,
-            group: failedTeam.group,
-            timedOut: true
-          });
-          io.emit("state", gameState);
-        }
-      }, 10000);
+  socket.on("joinMember", ({ group, name }) => {
+    const g = String(group);
+    const mName = String(name || "").trim();
+    if (game.teams[g] && mName) {
+      if (!game.teams[g].members[mName]) {
+        game.teams[g].members[mName] = { score: 0, correct: 0 };
+      }
+      socket.emit("joined", { group: g, name: mName });
+      io.emit("state", snapshot());
     }
   });
 
-  socket.on("submitAnswer", (data) => {
-    clearTimeout(questionTimer);
-    const currentQ = gameState.questions[gameState.currentQuestion];
+  socket.on("saveQuestions", questions => {
+    if (!Array.isArray(questions)) return;
+    game.questions = questions
+      .map(q => ({
+        q: String(q.q || "").trim(),
+        options: Array.isArray(q.options) ? q.options.slice(0, 4).map(x => String(x).trim()) : [],
+        answer: Math.max(0, Math.min(3, Number(q.answer) || 0))
+      }))
+      .filter(q => q.q && q.options.length === 4 && q.options.every(Boolean));
 
-    if (!currentQ || !gameState.buzzedTeam) return;
+    saveQuestionsToFile();
+    io.emit("questionsSaved", game.questions);
+    io.emit("state", snapshot());
+  });
 
-    if (data.optionIndex === currentQ.answer) {
-      gameState.answerRevealed = true;
-      const teamId = String(gameState.buzzedTeam.group);
-      
-      const step = gameState.teamStep || 10;
-      const pPoint = gameState.personalPoint || 1;
+  // MC chỉ cần bấm "BẮT ĐẦU TRÒ CHƠI" 1 lần duy nhất ở đây
+  socket.on("nextQuestion", () => {
+    triggerNextQuestion();
+  });
 
-      if (gameState.teams[teamId]) {
-        gameState.teams[teamId].score += step;
-        gameState.teams[teamId].correct += 1;
-        
-        // Cập nhật điểm cá nhân
-        const memberName = gameState.buzzedTeam.name;
-        if (memberName) {
-          if (!gameState.teams[teamId].members[memberName]) {
-            gameState.teams[teamId].members[memberName] = { score: 0, correct: 0 };
-          }
-          gameState.teams[teamId].members[memberName].score += pPoint;
-          gameState.teams[teamId].members[memberName].correct += 1;
-        }
+  socket.on("buzz", ({ group, name }) => {
+    const g = String(group);
+    if (!game.questionOpen || game.activeResponder || game.lockedGroups.includes(g)) return;
+
+    game.activeResponder = { group: g, name: name };
+    io.emit("buzzed", { group: g, name: name });
+    
+    socket.emit("answerAccess", {
+      group: g,
+      name: name,
+      question: game.questions[game.currentQuestion]
+    });
+
+    io.emit("state", snapshot());
+  });
+
+  socket.on("submitAnswer", ({ index, name, group }) => {
+    const g = String(group);
+    if (!game.activeResponder || game.activeResponder.group !== g) return;
+
+    const currentQ = game.questions[game.currentQuestion];
+    const isCorrect = currentQ && index === currentQ.answer;
+
+    if (isCorrect) {
+      // Trả lời ĐÚNG -> Hiện đáp án + Cộng điểm
+      game.questionOpen = false;
+      game.answerRevealed = true;
+
+      game.teams[g].score += game.scoring.teamStep;
+      game.teams[g].correct += 1;
+
+      if (game.teams[g].members[name]) {
+        game.teams[g].members[name].score += game.scoring.personalPoint;
+        game.teams[g].members[name].correct += 1;
       }
 
       io.emit("result", {
-        name: gameState.buzzedTeam.name,
-        group: gameState.buzzedTeam.group,
-        teamStep: step,
-        personalPoint: pPoint
+        correct: true,
+        name,
+        group: g,
+        teamStep: game.scoring.teamStep,
+        personalPoint: game.scoring.personalPoint
       });
-      gameState.buzzedTeam = null;
+      
+      game.activeResponder = null;
+      io.emit("state", snapshot());
+
+      // TỰ ĐỘNG CHUYỂN CÂU HỎI SAU 5 GIÂY
+      scheduleNextQuestion(5000);
+
     } else {
-      const failedGroup = String(gameState.buzzedTeam.group);
-      gameState.blockedTeams.push(failedGroup);
+      // Trả lời SAI / HẾT GIỜ
+      game.lockedGroups.push(g);
+      game.activeResponder = null;
 
       io.emit("wrong", {
-        name: gameState.buzzedTeam.name,
-        group: gameState.buzzedTeam.group,
-        timedOut: false
+        name,
+        group: g,
+        timedOut: index === null
       });
-      gameState.buzzedTeam = null;
 
-      const activeGroups = Object.keys(gameState.teams);
-      if (gameState.blockedTeams.length >= activeGroups.length) {
-        gameState.answerRevealed = true;
+      // Nếu cả 5 nhóm đều sai -> Tự động hiện đáp án và chuyển câu sau 5 giây
+      if (game.lockedGroups.length >= 5) {
+        game.questionOpen = false;
+        game.answerRevealed = true;
         io.emit("questionSkipped");
+        scheduleNextQuestion(5000);
       }
-    }
 
-    io.emit("state", gameState);
+      io.emit("state", snapshot());
+    }
   });
 
   socket.on("resetBuzz", () => {
-    gameState.buzzedTeam = null;
+    game.activeResponder = null;
     io.emit("resetBuzz");
-    io.emit("state", gameState);
+    io.emit("state", snapshot());
   });
 
-  socket.on("finishGame", () => {
-    io.emit("gameFinished");
+  socket.on("setScoring", ({ teamStep, personalPoint }) => {
+    game.scoring.teamStep = Math.max(1, Number(teamStep) || 2);
+    game.scoring.personalPoint = Math.max(1, Number(personalPoint) || 1);
+    io.emit("state", snapshot());
+  });
+
+  socket.on("resetGame", () => {
+    if (autoNextTimer) clearTimeout(autoNextTimer);
+    Object.keys(game.teams).forEach(g => {
+      game.teams[g] = { name: `Nhóm ${g}`, score: 0, correct: 0, members: {} };
+    });
+    game.currentQuestion = -1;
+    game.questionOpen = false;
+    game.activeResponder = null;
+    game.lockedGroups = [];
+    game.answerRevealed = false;
+
+    io.emit("fullReset");
+    io.emit("state", snapshot());
   });
 });
 
-const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server đang chạy tại cổng ${PORT}`);
+  console.log(`🚀 Server đang chạy tại port ${PORT}`);
 });
