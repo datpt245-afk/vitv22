@@ -363,27 +363,23 @@
 
     let soundEnabled = true;
 
-    // --- CÁC FILE ÂM THANH ---
+    // --- KHỞI TẠO CÁC FILE ÂM THANH ---
     // 1. Nhạc nền Lofi Chill
     const chillBGM = new Audio("https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3");
     chillBGM.loop = true;
     chillBGM.volume = 0.25;
 
-    // 2. Âm thanh Bấm chuông (Buzzer Sound)
+    // 2. Âm thanh Bấm chuông (Buzzer Sound Effect)
     const buzzSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
     buzzSound.volume = 0.9;
 
-    // 3. Âm thanh Trả lời Đúng (Win Fanfare)
+    // 3. Âm thanh Trả lời đúng / Chiến thắng (Correct Answer / Win Fanfare)
     const correctSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3");
     correctSound.volume = 0.9;
 
-    // 4. Âm thanh Trả lời Sai (Wrong Buzzer)
-    const wrongSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2874/2874-preview.mp3");
-    wrongSound.volume = 0.9;
-
     function playAudio(audioObj) {
       if (!soundEnabled) return;
-      audioObj.currentTime = 0;
+      audioObj.currentTime = 0; // Đặt lại về đầu nếu bấm liên tục
       audioObj.play().catch(() => {});
     }
 
@@ -444,7 +440,6 @@
       }
 
       if (state.currentQuestion >= 0 && state.questions && state.questions[state.currentQuestion]) {
-        // Chỉ tiết lộ đáp án nếu trạng thái trong game cho phép (answerRevealed)
         showQuestion(state.questions[state.currentQuestion], state.answerRevealed);
       } else {
         qs("screenQText").textContent = "Chưa mở câu hỏi";
@@ -487,6 +482,7 @@
       if (!x || !x.teams) return;
       let rawTeams = Array.isArray(x.teams) ? x.teams : Object.entries(x.teams).map(([k, v]) => ({ key: k, ...v }));
 
+      // Lọc bỏ Nhóm 2
       const activeTeams = rawTeams.filter(t => getGroupId(t) !== "2");
       const maxScore = Math.max(...activeTeams.map(t => Number(t.score) || 0), 1);
 
@@ -537,44 +533,33 @@
       startChillMusic();
     });
 
-    // 🔔 KHI BẤM CHUÔNG
+    // 🔔 KHI CÓ NGƯỜI BẤM CHUÔNG -> PHÁT TIẾNG CHUÔNG
     socket.on("buzzed", x => {
-      playAudio(buzzSound);
+      playAudio(buzzSound); // <--- Gọi âm thanh Bấm chuông
       qs("screenWinner").textContent = `🚨 ${x.name.toUpperCase()} (NHÓM ${x.group}) BẤM CHUÔNG!`;
       qs("screenStatus").textContent = "Đang có 10 giây để chọn đáp án...";
     });
 
-    // 🎉 KHI TRẢ LỜI ĐÚNG -> MỚI HIỂN THỊ ĐÁP ÁN ĐÚNG DƯỚI DẠNG MÀU XANH
+    // 🎉 KHI TRẢ LỜI ĐÚNG -> PHÁT TIẾNG TRẢ LỜI ĐÚNG / TUNG HÔ
     socket.on("result", x => {
-      playAudio(correctSound);
+      playAudio(correctSound); // <--- Gọi âm thanh Trả lời đúng
       qs("screenWinner").textContent = `🎉 ${x.name} (NHÓM ${x.group}) TRẢ LỜI ĐÚNG!`;
       qs("screenStatus").textContent = `+${x.teamStep} điểm nhóm | +${x.personalPoint} điểm cá nhân`;
-      
-      // Hiện đáp án đúng vì đã có đội trả lời chính xác
       if (currentGameState && currentGameState.questions && currentGameState.questions[currentGameState.currentQuestion]) {
         showQuestion(currentGameState.questions[currentGameState.currentQuestion], true);
       }
     });
 
-    // ❌ KHI TRẢ LỜI SAI -> PHÁT ÂM THANH SAI & GIỮ NGUYÊN GIAO DIỆN KHÔNG HIỆN ĐÁP ÁN
     socket.on("wrong", x => {
-      playAudio(wrongSound); // Phát âm thanh sai
-      
       if (x.timedOut) {
         qs("screenWinner").textContent = `⏱️ ${x.name} (NHÓM ${x.group}) HẾT 10 GIÂY!`;
       } else {
         qs("screenWinner").textContent = `❌ ${x.name} (NHÓM ${x.group}) TRẢ LỜI SAI!`;
       }
-      qs("screenStatus").textContent = `Nhóm ${x.group} bị khóa ở câu này. Chuẩn bị nhường quyền cho các nhóm còn lại!`;
-      
-      // Giữ nguyên câu hỏi ở dạng ẩn (false) để các nhóm sau suy luận tiếp
-      if (currentGameState && currentGameState.questions && currentGameState.questions[currentGameState.currentQuestion]) {
-        showQuestion(currentGameState.questions[currentGameState.currentQuestion], false);
-      }
+      qs("screenStatus").textContent = `Nhóm ${x.group} bị khóa ở câu này. Mở lại chuông cho các nhóm còn lại!`;
     });
 
     socket.on("questionSkipped", () => {
-      playAudio(wrongSound);
       qs("screenWinner").textContent = "⚠️ TẤT CẢ CÁC NHÓM ĐỀU KHÔNG TRẢ LỜI ĐÚNG!";
       qs("screenStatus").textContent = "Hệ thống tự động bỏ qua và chuẩn bị chuyển sang câu tiếp theo...";
     });
