@@ -1,7 +1,6 @@
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const path = require("path");
 
 const app = express();
 const server = http.createServer(app);
@@ -9,7 +8,8 @@ const io = new Server(server, {
   cors: { origin: "*" }
 });
 
-app.use(express.static(path.join(__dirname, "public")));
+// Cho phép Express phục vụ trực tiếp các file HTML/CSS ở thư mục gốc
+app.use(express.static(__dirname));
 
 const questions = [
   {
@@ -145,5 +145,5 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server đang chạy tại http://localhost:${PORT}`);
+  console.log(`Server đang chạy tại cổng ${PORT}`);
 });
