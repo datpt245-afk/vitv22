@@ -20,7 +20,8 @@
 <body>
   <div class="card box">
     <h2 style="color: #f59e0b; margin-top: 0;">⏳ THỜI GIAN TRẢ LỜI</h2>
-    <div id="timer" class="timer-box">10</div>
+    <!-- SỬA 1: Đổi số hiển thị mặc định từ 10 thành 5 -->
+    <div id="timer" class="timer-box">5</div>
     
     <div id="questionText" class="qbox" style="font-size: 20px; margin-bottom: 20px;"></div>
     <div id="optionsContainer"></div>
@@ -52,7 +53,8 @@
         container.appendChild(btn);
       });
 
-      let timeLeft = 10;
+      // SỬA 2: Đổi giá trị thời gian đếm ngược từ 10 thành 5
+      let timeLeft = 5; 
       const timerEl = document.getElementById("timer");
       
       const interval = setInterval(() => {
@@ -60,7 +62,7 @@
         timerEl.textContent = timeLeft;
         if (timeLeft <= 0) {
           clearInterval(interval);
-          submit(null);
+          submit(null); // Hết 5 giây tự động gửi đáp án rỗng (Hết giờ)
         }
       }, 1000);
 
