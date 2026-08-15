@@ -133,6 +133,7 @@
       text-align: center;
       margin-bottom: 20px;
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      position: relative;
     }
     .winner-title {
       font-size: 32px;
@@ -144,6 +145,23 @@
       font-size: 18px;
       color: #94a3b8;
       margin-top: 5px;
+    }
+
+    /* ĐỒNG HỒ ĐẾM NGƯỢC 5 GIÂY */
+    .timer-display {
+      display: none;
+      font-size: 42px;
+      font-weight: 900;
+      color: #ef4444;
+      margin-top: 8px;
+      animation: timerPulse 0.5s infinite alternate ease-in-out;
+    }
+    .timer-display.active {
+      display: block;
+    }
+    @keyframes timerPulse {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.1); opacity: 0.8; }
     }
     
     .audio-control-btn {
@@ -339,6 +357,8 @@
     <div class="status-banner">
       <div id="screenWinner" class="winner-title">🦆 ĐƯỜNG ĐUA VỊT 2D SẴN SÀNG!</div>
       <div id="screenStatus" class="status-sub">Đang chờ MC bắt đầu trò chơi...</div>
+      <!-- HIỂN THỊ ĐẾM NGƯỢC 5 GIÂY -->
+      <div id="timerDisplay" class="timer-display">⏱️ 5s</div>
     </div>
 
     <div class="q-card">
@@ -362,6 +382,8 @@
     let currentGameState = null;
 
     let soundEnabled = true;
+    let countdownTimer = null;
+    let timeLeft = 5;
 
     // --- NHẠC NỀN LOFI CHILL ---
     const chillBGM = new Audio("https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3");
@@ -464,6 +486,34 @@
         btn.style.background = "#64748b";
         btn.style.color = "#fff";
       }
+    }
+
+    // --- QUẢN LÝ BỘ ĐẾM NGƯỢC 5 GIÂY ---
+    function start5SecTimer() {
+      stop5SecTimer(); // Reset bộ đếm cũ nếu đang chạy
+      timeLeft = 5;
+      const timerEl = qs("timerDisplay");
+      timerEl.textContent = `⏱️ ${timeLeft}s`;
+      timerEl.classList.add("active");
+
+      countdownTimer = setInterval(() => {
+        timeLeft -= 1;
+        if (timeLeft >= 0) {
+          timerEl.textContent = `⏱️ ${timeLeft}s`;
+        }
+        if (timeLeft <= 0) {
+          stop5SecTimer();
+        }
+      }, 1000);
+    }
+
+    function stop5SecTimer() {
+      if (countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+      }
+      const timerEl = qs("timerDisplay");
+      timerEl.classList.remove("active");
     }
 
     window.addEventListener('click', () => { 
@@ -587,6 +637,7 @@
     }
 
     socket.on("questionOpened", x => {
+      stop5SecTimer();
       qs("rulesOverlay").classList.add("hidden");
       qs("screenWinner").textContent = `❓ CÂU HỎI SỐ ${x.index + 1}`;
       qs("screenStatus").textContent = "Các nhóm nhanh tay bấm chuông giành quyền trả lời!";
@@ -594,15 +645,17 @@
       startChillMusic();
     });
 
-    // --- PHÁT CHUÔNG BẤM CƯỚP QUYỀN ---
+    // --- PHÁT CHUÔNG BẤM CƯỚP QUYỀN & CHẠY BỘ ĐẾM 5 GIÂY ---
     socket.on("buzzed", x => {
       playSound('buzz');
       qs("screenWinner").textContent = `🚨 ${x.name.toUpperCase()} (NHÓM ${x.group}) BẤM CHUÔNG!`;
-      qs("screenStatus").textContent = "Đang có 10 giây để chọn đáp án...";
+      qs("screenStatus").textContent = "Đang có 5 giây để chọn đáp án...";
+      start5SecTimer();
     });
 
     // --- PHÁT ÂM THANH TRẢ LỜI ĐÚNG ---
     socket.on("result", x => {
+      stop5SecTimer();
       playSound('correct');
       qs("screenWinner").textContent = `🎉 ${x.name} (NHÓM ${x.group}) TRẢ LỜI ĐÚNG!`;
       qs("screenStatus").textContent = `+${x.teamStep} điểm nhóm | +${x.personalPoint} điểm cá nhân`;
@@ -613,9 +666,10 @@
 
     // --- PHÁT ÂM THANH TRẢ LỜI SAI / HẾT GIỜ ---
     socket.on("wrong", x => {
+      stop5SecTimer();
       playSound('wrong');
       if (x.timedOut) {
-        qs("screenWinner").textContent = `⏱️ ${x.name} (NHÓM ${x.group}) HẾT 10 GIÂY!`;
+        qs("screenWinner").textContent = `⏱️ ${x.name} (NHÓM ${x.group}) HẾT 5 GIÂY!`;
       } else {
         qs("screenWinner").textContent = `❌ ${x.name} (NHÓM ${x.group}) TRẢ LỜI SAI!`;
       }
@@ -623,16 +677,19 @@
     });
 
     socket.on("questionSkipped", () => {
+      stop5SecTimer();
       qs("screenWinner").textContent = "⚠️ TẤT CẢ CÁC NHÓM ĐỀU KHÔNG TRẢ LỜI ĐÚNG!";
       qs("screenStatus").textContent = "Hệ thống tự động bỏ qua và chuẩn bị chuyển sang câu tiếp theo...";
     });
 
     socket.on("resetBuzz", () => {
+      stop5SecTimer();
       qs("screenWinner").textContent = "🔔 CHUÔNG ĐÃ MỞ LẠI!";
       qs("screenStatus").textContent = "Mời các nhóm còn lại cướp quyền trả lời!";
     });
 
     socket.on("gameFinished", () => {
+      stop5SecTimer();
       qs("screenWinner").textContent = "🏆 TRÒ CHƠI KẾT THÚC!";
       qs("screenStatus").textContent = "Xin chúc mừng các cá nhân và nhóm giành chiến thắng!";
     });
