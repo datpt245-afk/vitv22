@@ -328,13 +328,13 @@
 
       <div class="lobby-status">⏳ ĐANG CHỜ MC BẤM BẮT ĐẦU TRÒ CHƠI...</div>
       <div>
-        <button class="activate-sound-btn" onclick="startChillMusic()">🎵 Bấm vào đây để Bật Âm Thanh Chill</button>
+        <button class="activate-sound-btn" onclick="startChillMusic()">🎵 Bấm vào đây để Kích Hoạt Âm Thanh</button>
       </div>
     </div>
   </div>
 
   <div class="screen-container">
-    <button id="audioToggleBtn" class="audio-control-btn" onclick="toggleAudio()">🎵 Nhạc Chill: BẬT</button>
+    <button id="audioToggleBtn" class="audio-control-btn" onclick="toggleAudio()">🎵 Âm Thanh: BẬT</button>
 
     <div class="status-banner">
       <div id="screenWinner" class="winner-title">🦆 ĐƯỜNG ĐUA VỊT 2D SẴN SÀNG!</div>
@@ -362,14 +362,35 @@
     let currentGameState = null;
 
     let soundEnabled = true;
+
+    // --- CÁC FILE ÂM THANH ---
+    // 1. Nhạc nền Lofi Chill
     const chillBGM = new Audio("https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3");
     chillBGM.loop = true;
     chillBGM.volume = 0.25;
 
+    // 2. Âm thanh Bấm chuông (Buzzer Sound)
+    const buzzSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+    buzzSound.volume = 0.9;
+
+    // 3. Âm thanh Trả lời Đúng (Win Fanfare)
+    const correctSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3");
+    correctSound.volume = 0.9;
+
+    // 4. Âm thanh Trả lời Sai (Wrong Buzzer)
+    const wrongSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2874/2874-preview.mp3");
+    wrongSound.volume = 0.9;
+
+    function playAudio(audioObj) {
+      if (!soundEnabled) return;
+      audioObj.currentTime = 0;
+      audioObj.play().catch(() => {});
+    }
+
     function startChillMusic() {
       if (soundEnabled && chillBGM.paused) {
         chillBGM.play().then(() => {
-          qs("audioToggleBtn").textContent = "🎵 Nhạc Chill: ĐANG PHÁT";
+          qs("audioToggleBtn").textContent = "🎵 Âm Thanh: ĐANG BẬT";
         }).catch(() => {});
       }
     }
@@ -379,12 +400,12 @@
       const btn = qs("audioToggleBtn");
       if (soundEnabled) {
         chillBGM.play();
-        btn.textContent = "🎵 Nhạc Chill: ĐANG PHÁT";
+        btn.textContent = "🎵 Âm Thanh: ĐANG BẬT";
         btn.style.background = "rgba(56, 189, 248, 0.2)";
         btn.style.color = "#38bdf8";
       } else {
         chillBGM.pause();
-        btn.textContent = "🔇 Nhạc Chill: TẮT";
+        btn.textContent = "🔇 Âm Thanh: TẮT";
         btn.style.background = "#64748b";
         btn.style.color = "#fff";
       }
@@ -394,13 +415,12 @@
 
     // Cấu hình Bảng màu định danh chuẩn xác theo Số Nhóm (Group ID)
     const teamColors = {
-      "1": { body: "#EF4444", wing: "#B91C1C", name: "Nhóm 1 (Đỏ)" },
-      "3": { body: "#22C55E", wing: "#15803D", name: "Nhóm 3 (Lá)" },
-      "4": { body: "#FACC15", wing: "#CA8A04", name: "Nhóm 4 (Vàng)" },
-      "5": { body: "#A855F7", wing: "#7E22CE", name: "Nhóm 5 (Tím)" }
+      "1": { body: "#EF4444", wing: "#B91C1C" }, // Đỏ
+      "3": { body: "#22C55E", wing: "#15803D" }, // Lá
+      "4": { body: "#FACC15", wing: "#CA8A04" }, // Vàng
+      "5": { body: "#A855F7", wing: "#7E22CE" }  // Tím
     };
 
-    // Hàm nhận diện ID nhóm linh hoạt từ các dữ liệu Server gửi về
     function getGroupId(t) {
       if (!t) return "";
       let idStr = String(t.id || t.group || t.key || "").trim();
@@ -424,6 +444,7 @@
       }
 
       if (state.currentQuestion >= 0 && state.questions && state.questions[state.currentQuestion]) {
+        // Chỉ tiết lộ đáp án nếu trạng thái trong game cho phép (answerRevealed)
         showQuestion(state.questions[state.currentQuestion], state.answerRevealed);
       } else {
         qs("screenQText").textContent = "Chưa mở câu hỏi";
@@ -464,13 +485,9 @@
 
     function renderRace(x) {
       if (!x || !x.teams) return;
-
-      // Lấy danh sách teams từ Object hoặc Array
       let rawTeams = Array.isArray(x.teams) ? x.teams : Object.entries(x.teams).map(([k, v]) => ({ key: k, ...v }));
 
-      // Lọc BỎ hoàn toàn Nhóm 2
       const activeTeams = rawTeams.filter(t => getGroupId(t) !== "2");
-
       const maxScore = Math.max(...activeTeams.map(t => Number(t.score) || 0), 1);
 
       qs("screenRace").innerHTML = activeTeams.map(t => {
@@ -478,7 +495,6 @@
         const pct = score === 0 ? 2 : Math.min(85, Math.max(2, (score / Math.max(maxScore, 10)) * 85));
         
         const gId = getGroupId(t);
-        // Lấy đúng màu theo số Nhóm, nếu không có thì gán mặc định tương ứng
         const c = teamColors[gId] || { body: "#38bdf8", wing: "#0284c7" };
 
         return `
@@ -500,7 +516,6 @@
       if (!x || !x.teams) return;
       let rawTeams = Array.isArray(x.teams) ? x.teams : Object.entries(x.teams).map(([k, v]) => ({ key: k, ...v }));
       
-      // Lọc BỎ Nhóm 2 ở Bảng Điểm
       const activeTeams = rawTeams.filter(t => getGroupId(t) !== "2");
 
       qs("screenScores").innerHTML = activeTeams.map(t => {
@@ -522,29 +537,44 @@
       startChillMusic();
     });
 
+    // 🔔 KHI BẤM CHUÔNG
     socket.on("buzzed", x => {
+      playAudio(buzzSound);
       qs("screenWinner").textContent = `🚨 ${x.name.toUpperCase()} (NHÓM ${x.group}) BẤM CHUÔNG!`;
       qs("screenStatus").textContent = "Đang có 10 giây để chọn đáp án...";
     });
 
+    // 🎉 KHI TRẢ LỜI ĐÚNG -> MỚI HIỂN THỊ ĐÁP ÁN ĐÚNG DƯỚI DẠNG MÀU XANH
     socket.on("result", x => {
+      playAudio(correctSound);
       qs("screenWinner").textContent = `🎉 ${x.name} (NHÓM ${x.group}) TRẢ LỜI ĐÚNG!`;
       qs("screenStatus").textContent = `+${x.teamStep} điểm nhóm | +${x.personalPoint} điểm cá nhân`;
+      
+      // Hiện đáp án đúng vì đã có đội trả lời chính xác
       if (currentGameState && currentGameState.questions && currentGameState.questions[currentGameState.currentQuestion]) {
         showQuestion(currentGameState.questions[currentGameState.currentQuestion], true);
       }
     });
 
+    // ❌ KHI TRẢ LỜI SAI -> PHÁT ÂM THANH SAI & GIỮ NGUYÊN GIAO DIỆN KHÔNG HIỆN ĐÁP ÁN
     socket.on("wrong", x => {
+      playAudio(wrongSound); // Phát âm thanh sai
+      
       if (x.timedOut) {
         qs("screenWinner").textContent = `⏱️ ${x.name} (NHÓM ${x.group}) HẾT 10 GIÂY!`;
       } else {
         qs("screenWinner").textContent = `❌ ${x.name} (NHÓM ${x.group}) TRẢ LỜI SAI!`;
       }
-      qs("screenStatus").textContent = `Nhóm ${x.group} bị khóa ở câu này. Mở lại chuông cho các nhóm còn lại!`;
+      qs("screenStatus").textContent = `Nhóm ${x.group} bị khóa ở câu này. Chuẩn bị nhường quyền cho các nhóm còn lại!`;
+      
+      // Giữ nguyên câu hỏi ở dạng ẩn (false) để các nhóm sau suy luận tiếp
+      if (currentGameState && currentGameState.questions && currentGameState.questions[currentGameState.currentQuestion]) {
+        showQuestion(currentGameState.questions[currentGameState.currentQuestion], false);
+      }
     });
 
     socket.on("questionSkipped", () => {
+      playAudio(wrongSound);
       qs("screenWinner").textContent = "⚠️ TẤT CẢ CÁC NHÓM ĐỀU KHÔNG TRẢ LỜI ĐÚNG!";
       qs("screenStatus").textContent = "Hệ thống tự động bỏ qua và chuẩn bị chuyển sang câu tiếp theo...";
     });
@@ -555,6 +585,7 @@
     });
 
     socket.on("gameFinished", () => {
+      playAudio(correctSound);
       qs("screenWinner").textContent = "🏆 TRÒ CHƠI KẾT THÚC!";
       qs("screenStatus").textContent = "Xin chúc mừng các cá nhân và nhóm giành chiến thắng!";
     });
