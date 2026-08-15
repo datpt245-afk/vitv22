@@ -9,10 +9,8 @@ const io = new Server(server, {
   cors: { origin: "*" }
 });
 
-// Phục vụ tĩnh thư mục public (chứa screen.html, style.css, ...)
 app.use(express.static(path.join(__dirname, "public")));
 
-// Danh sách câu hỏi mẫu
 const questions = [
   {
     q: "Thủ đô của Việt Nam là gì?",
@@ -23,15 +21,9 @@ const questions = [
     q: "Số nào sau đây là số nguyên tố?",
     options: ["4", "6", "7", "9"],
     answer: 2
-  },
-  {
-    q: "Đơn vị tiền tệ chính thức của Việt Nam là gì?",
-    options: ["USD", "Yên", "Đồng", "Euro"],
-    answer: 2
   }
 ];
 
-// Khởi tạo trạng thái trò chơi (Chỉ dành cho Nhóm 1, 3, 4, 5)
 let gameState = {
   started: false,
   currentQuestion: -1,
@@ -50,17 +42,14 @@ let gameState = {
 let questionTimer = null;
 
 io.on("connection", (socket) => {
-  // Gửi trạng thái hiện tại cho người dùng mới kết nối
   socket.emit("state", gameState);
 
-  // Bắt đầu trò chơi từ MC
   socket.on("startGame", () => {
     gameState.started = true;
     io.emit("gameStarted");
     io.emit("state", gameState);
   });
 
-  // MC mở câu hỏi mới
   socket.on("openQuestion", (index) => {
     if (index >= 0 && index < gameState.questions.length) {
       gameState.currentQuestion = index;
@@ -77,19 +66,12 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Xử lý khi có người BẤM CHUÔNG
   socket.on("buzz", (data) => {
-    const groupStr = String(data.group);
-    
-    // Chỉ nhận chuông nếu chưa có ai bấm và nhóm đó chưa bị khóa ở câu này
-    if (!gameState.buzzedTeam && !gameState.blockedTeams.includes(groupStr)) {
+    if (!gameState.buzzedTeam && !gameState.blockedTeams.includes(String(data.group))) {
       gameState.buzzedTeam = data;
-      
-      // Phát sự kiện 'buzzed' để kích hoạt âm thanh tiếng chuông trên màn chiếu
       io.emit("buzzed", data);
       io.emit("state", gameState);
 
-      // Đặt bộ đếm thời gian 10 giây trả lời
       clearTimeout(questionTimer);
       questionTimer = setTimeout(() => {
         if (gameState.buzzedTeam) {
@@ -108,7 +90,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Xử lý khi người chơi NỘP ĐÁP ÁN
   socket.on("submitAnswer", (data) => {
     clearTimeout(questionTimer);
     const currentQ = gameState.questions[gameState.currentQuestion];
@@ -116,7 +97,6 @@ io.on("connection", (socket) => {
     if (!currentQ || !gameState.buzzedTeam) return;
 
     if (data.optionIndex === currentQ.answer) {
-      // 1. TRẢ LỜI ĐÚNG
       gameState.answerRevealed = true;
       const teamId = String(gameState.buzzedTeam.group);
       
@@ -124,7 +104,6 @@ io.on("connection", (socket) => {
         gameState.teams[teamId].score += 10;
       }
 
-      // Phát sự kiện 'result' để màn chiếu chạy âm thanh chiến thắng & tung hô
       io.emit("result", {
         name: gameState.buzzedTeam.name,
         group: gameState.buzzedTeam.group,
@@ -133,7 +112,6 @@ io.on("connection", (socket) => {
       });
       gameState.buzzedTeam = null;
     } else {
-      // 2. TRẢ LỜI SAI
       const failedGroup = String(gameState.buzzedTeam.group);
       gameState.blockedTeams.push(failedGroup);
 
@@ -144,7 +122,6 @@ io.on("connection", (socket) => {
       });
       gameState.buzzedTeam = null;
 
-      // Nếu tất cả các nhóm tham gia đều đã trả lời sai -> Bỏ qua câu hỏi
       const activeGroups = Object.keys(gameState.teams);
       if (gameState.blockedTeams.length >= activeGroups.length) {
         gameState.answerRevealed = true;
@@ -155,14 +132,12 @@ io.on("connection", (socket) => {
     io.emit("state", gameState);
   });
 
-  // MC reset chuông cho các nhóm còn lại cướp quyền
   socket.on("resetBuzz", () => {
     gameState.buzzedTeam = null;
     io.emit("resetBuzz");
     io.emit("state", gameState);
   });
 
-  // MC kết thúc trò chơi
   socket.on("finishGame", () => {
     io.emit("gameFinished");
   });
@@ -170,5 +145,5 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🚀 Server Duck Race đang chạy tại http://localhost:${PORT}`);
+  console.log(`Server đang chạy tại http://localhost:${PORT}`);
 });
