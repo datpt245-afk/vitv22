@@ -64,7 +64,7 @@ s.on("resetBuzz",()=>{
 s.on("wrong",x=>{
   if(x.group === group) {
     document.getElementById("buzz").disabled=true;
-    status.textContent=x.timedOut ? "⏱️ Hết 10s! Nhóm bạn bị khóa lượt câu này." : "❌ Trả lời sai! Nhóm bạn bị khóa lượt câu này.";
+    status.textContent=x.timedOut ? "⏱️ Hết 5s! Nhóm bạn bị khóa lượt câu này." : "❌ Trả lời sai! Nhóm bạn bị khóa lượt câu này.";
   } else {
     status.textContent=`🔔 Nhóm ${x.group} trả lời sai. Nhóm còn lại cướp quyền!`;
   }
