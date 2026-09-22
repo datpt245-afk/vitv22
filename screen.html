@@ -334,7 +334,7 @@
       <ol class="rules-list">
         <li><strong>Tham gia:</strong> Tất cả các thành viên truy cập vào liên kết theo đúng tên nhóm của bản thân (Dành cho Nhóm 1, 2, 4, 5, 6).</li>
         <li><strong>Giành quyền trả lời:</strong> Khi trò chơi bắt đầu, người chơi đọc câu hỏi và nhanh tay <strong>ấn chuông</strong>. Người bấm nhanh nhất sẽ giành quyền trả lời để mang về điểm <strong>NHÓM</strong>.</li>
-        <li><strong>Chuyển quyền:</strong> Nếu người đầu tiên trả lời sai, quyền trả lời sẽ được chuyển tiếp sang người tiếp theo bấm chuông.</li>
+        <li><strong>Chuyển quyền:</strong> Nếu người đầu tiên trả lời sai, quyền trả lời sẽ được chuyển tiếp sang nhóm tiếp theo bấm chuông.</li>
         <li><strong>Kết thúc & Bảng điểm:</strong> Khi trò chơi kết thúc, hệ thống sẽ tính điểm Nhóm (dựa trên chú vịt chạy xa nhất) để tính điểm NHÓM:</li>
       </ol>
 
@@ -624,7 +624,7 @@
     function renderScores(x) {
       if (!x || !x.teams) return;
       let rawTeams = Array.isArray(x.teams) ? x.teams : Object.entries(x.teams).map(([k, v]) => ({ key: k, ...v }));
-      const activeTeams = rawTeams.filter(t => getGroupId(t) !== "2");
+      const activeTeams = rawTeams.filter(t => getGroupId(t) !== "3");
 
       qs("screenScores").innerHTML = activeTeams.map(t => {
         const gId = getGroupId(t);
