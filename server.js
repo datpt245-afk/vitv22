@@ -41,7 +41,7 @@ function loadQuestions() {
   try {
     if (fs.existsSync(DATA_FILE)) {
       const raw = fs.readFileSync(DATA_FILE, "utf8");
-      .questions = JSON.parse(raw);
+      game.questions = JSON.parse(raw);
       console.log(`[DATA] Đã tải ${game.questions.length} câu hỏi.`);
     }
   } catch (err) {
