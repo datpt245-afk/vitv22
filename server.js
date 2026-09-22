@@ -18,9 +18,9 @@ let game = {
   teams: {
     1: { name: "Nhóm 1", score: 0, correct: 0, members: {} },
     2: { name: "Nhóm 2", score: 0, correct: 0, members: {} },
-    3: { name: "Nhóm 3", score: 0, correct: 0, members: {} },
     4: { name: "Nhóm 4", score: 0, correct: 0, members: {} },
-    5: { name: "Nhóm 5", score: 0, correct: 0, members: {} }
+    5: { name: "Nhóm 5", score: 0, correct: 0, members: {} },
+    6: { name: "Nhóm 6", score: 0, correct: 0, members: {} }
   },
   questions: [],
   currentQuestion: -1,
@@ -41,7 +41,7 @@ function loadQuestions() {
   try {
     if (fs.existsSync(DATA_FILE)) {
       const raw = fs.readFileSync(DATA_FILE, "utf8");
-      game.questions = JSON.parse(raw);
+      .questions = JSON.parse(raw);
       console.log(`[DATA] Đã tải ${game.questions.length} câu hỏi.`);
     }
   } catch (err) {
