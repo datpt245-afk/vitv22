@@ -19,9 +19,7 @@
 </head>
 <body>
   <div class="card box">
-    <h2 style="color: #f59e0b; margin-top: 0;">⏳ THỜI GIAN TRẢ LỜI</h2>
-    <!-- SỬA 1: Đổi số hiển thị mặc định từ 10 thành 5 -->
-    <div id="timer" class="timer-box">5</div>
+    
     
     <div id="questionText" class="qbox" style="font-size: 20px; margin-bottom: 20px;"></div>
     <div id="optionsContainer"></div>
@@ -46,25 +44,12 @@
       const labels = ["A", "B", "C", "D"];
       
       data.question.options.forEach((opt, idx) => {
-        const btn = document.createElement("button");
-        btn.className = "opt-btn";
-        btn.textContent = `${labels[idx]}. ${opt}`;
-        btn.onclick = () => submit(idx);
-        container.appendChild(btn);
+        const div = document.createElement("div");
+        div.className = "opt-btn";
+        div.textContent = `${labels[idx]}. ${opt}`;
+        container.appendChild(div);
       });
 
-      // SỬA 2: Đổi giá trị thời gian đếm ngược từ 10 thành 5
-      let timeLeft = 5; 
-      const timerEl = document.getElementById("timer");
-      
-      const interval = setInterval(() => {
-        timeLeft--;
-        timerEl.textContent = timeLeft;
-        if (timeLeft <= 0) {
-          clearInterval(interval);
-          submit(null); // Hết 5 giây tự động gửi đáp án rỗng (Hết giờ)
-        }
-      }, 1000);
 
       let submitted = false;
       function submit(index) {
