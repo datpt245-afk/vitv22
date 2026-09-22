@@ -310,7 +310,7 @@
 
     .scoreboard {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr); <!-- Sửa 4 thành 5-->
       gap: 12px;
       margin-top: 20px;
     }
@@ -522,11 +522,13 @@
     }, { once: true });
 
     // Cấu hình Bảng màu định danh chuẩn xác theo Số Nhóm (Group ID)
+    <!-- Sửa: thêm nhóm 2 6 bỏ nhóm 3-->
     const teamColors = {
       "1": { body: "#EF4444", wing: "#B91C1C", name: "Nhóm 1 (Đỏ)" },
-      "3": { body: "#22C55E", wing: "#15803D", name: "Nhóm 3 (Lá)" },
+      "2": { body: "#3B82F6", wing: "#1D4ED8", name: "Nhóm 2 (Xanh)" },
       "4": { body: "#FACC15", wing: "#CA8A04", name: "Nhóm 4 (Vàng)" },
-      "5": { body: "#A855F7", wing: "#7E22CE", name: "Nhóm 5 (Tím)" }
+      "5": { body: "#A855F7", wing: "#7E22CE", name: "Nhóm 5 (Tím)" },
+      "6": { body: "#F97316", wing: "#C2410C", name: "Nhóm 6 (Cam)" }
     };
 
     function getGroupId(t) {
@@ -594,8 +596,8 @@
       if (!x || !x.teams) return;
 
       let rawTeams = Array.isArray(x.teams) ? x.teams : Object.entries(x.teams).map(([k, v]) => ({ key: k, ...v }));
-      const activeTeams = rawTeams.filter(t => getGroupId(t) !== "2");
-
+      const activeTeams = rawTeams.filter(t => getGroupId(t) !== "3");
+<!-- sửa 2 thành 3-->
       const maxScore = Math.max(...activeTeams.map(t => Number(t.score) || 0), 1);
 
       qs("screenRace").innerHTML = activeTeams.map(t => {
