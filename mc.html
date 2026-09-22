@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Duck Race - Bảng Điều Khiển MC</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="style.css">
   <style>
     .admin-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
     .status-card { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
@@ -35,7 +35,13 @@
           <div id="winner" class="winner">🔔 Đang chờ MC mở câu hỏi...</div>
           <div id="qbox" class="qbox">Chưa có câu hỏi nào được chọn</div>
           <div id="opts" class="options"></div>
-          
+          <div id="mcAnswerBox" class="row" style="margin-top: 12px; display:none;">
+            <button class="btn primary" style="padding: 10px 18px;" onclick="mcAnswer(0)">Chọn A</button>
+            <button class="btn primary" style="padding: 10px 18px;" onclick="mcAnswer(1)">Chọn B</button>
+            <button class="btn primary" style="padding: 10px 18px;" onclick="mcAnswer(2)">Chọn C</button>
+            <button class="btn primary" style="padding: 10px 18px;" onclick="mcAnswer(3)">Chọn D</button>
+          </div>
+
           <div class="row" style="margin-top: 16px;">
             <button id="nextBtn" class="btn primary" style="font-size: 16px; padding: 12px 24px;" onclick="nextQuestion()">▶️ MỞ CÂU ĐẦU TIÊN</button>
           </div>
@@ -521,7 +527,7 @@
       }).join("");
 
       // Render Link kết nối 5 nhóm
-      qs("links").innerHTML = [1, 2, 4, 5, 6].map(i => 
+      qs("links").innerHTML = [1, 2, 3, 4, 5].map(i => 
         `<p style="margin: 6px 0; font-size: 13px;">🔔 <b>Nhóm ${i}:</b> <code>${location.origin}/?group=${i}</code></p>`
       ).join("");
 
@@ -532,6 +538,10 @@
         qs("qbox").textContent = "Chưa mở câu hỏi";
         qs("opts").innerHTML = "";
       }
+
+      // Hiện nút chọn đáp án cho MC khi có người đang giữ quyền trả lời
+      qs("mcAnswerBox").style.display = (x.activeResponder && !x.answerRevealed) ? "flex" : "none";
+
       updateNextButton();
     }
 
@@ -624,6 +634,11 @@
       reader.readAsText(file);
     }
 
+    function mcAnswer(index) {
+      if (!state || !state.activeResponder) return;
+      socket.emit("mcSubmitAnswer", { index });
+    }
+
     function resetBuzz() { socket.emit("resetBuzz"); }
     function resetGame() {
       if (confirm("Hành động này sẽ xoá toàn bộ điểm số và thành viên. Bạn có chắc chắn?")) {
@@ -648,7 +663,7 @@
 
     socket.on("buzzed", x => {
       qs("winner").textContent = `🚨 ${x.name.toUpperCase()} (NHÓM ${x.group}) GIÀNH QUYỀN!`;
-      qs("status").textContent = "Thành viên có 10 giây để chọn đáp án trên màn hình...";
+      qs("status").textContent = "MC hãy chọn đáp án của người chơi trên màn hình chính.";
     });
 
     socket.on("result", x => {
@@ -657,9 +672,7 @@
     });
 
     socket.on("wrong", x => {
-      qs("winner").textContent = x.timedOut 
-        ? `⏱️ ${x.name} (NHÓM ${x.group}) HẾT 10 GIÂY!` 
-        : `❌ ${x.name} (NHÓM ${x.group}) TRẢ LỜI SAI!`;
+      qs("winner").textContent = `❌ ${x.name} (NHÓM ${x.group}) TRẢ LỜI SAI!`;
       qs("status").textContent = `Nhóm ${x.group} đã bị khóa lượt ở câu này. Chuông đã mở cho các nhóm còn lại cướp quyền!`;
     });
 
